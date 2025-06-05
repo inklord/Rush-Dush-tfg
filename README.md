@@ -200,11 +200,11 @@ Assets/
 ## 👥 Autor
 
 <<<<<<< HEAD
-**[Reemplaza con tu nombre completo]**  
-*Estudiante de [Tu Carrera - ej: Ingeniería Informática]*  
-*[Tu Universidad - ej: Universidad Complutense de Madrid]*  
+**Mario CAscado Nieto**  
+*Estudiante de Diseño de aplicaciones multiplataforma*  
+*Colegio Miralmonte*  
 
-📧 [tu-email@universidad.edu]  
+📧 mariocn881@gmail.com  
 🔗 [LinkedIn](https://linkedin.com/in/tu-perfil)  
 💼 [GitHub](https://github.com/inklord)
 =======
