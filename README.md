@@ -6,7 +6,7 @@
 
 ## 📖 Descripción del Proyecto
 
-Este proyecto es un **Trabajo de Fin de Grado** que recrea la mecánica principal del juego Fall Guys, enfocándose especialmente en el nivel **Hexagonia** donde los jugadores deben sobrevivir en hexágonos que cambian de color y se destruyen progresivamente.
+Este proyecto es un **Trabajo de Fin de Grado** que recrea la mecánica principal del juego Fall Guys, enfocándose especialmente en el desarrollo de múltiples niveles con énfasis particular en **InGame** como nivel principal, complementado con **Hexagonia** y **Carreras**.
 
 ### 🎯 Objetivos Principales
 
@@ -14,191 +14,213 @@ Este proyecto es un **Trabajo de Fin de Grado** que recrea la mecánica principa
 - **Sistema multijugador** usando Photon Unity Networking (PUN2)
 - **Mecánicas de juego** fieles al original con física y colisiones
 - **Interfaz de usuario** intuitiva y responsive
-- **Sistema de navegación** entre diferentes niveles de juego
+- **Sistema de navegación** entre múltiples escenas de juego
 
 ---
 
-## 🚀 Características Implementadas
+## 🏗️ Estructura del Proyecto
 
-### 🤖 Sistema de Inteligencia Artificial
-- **Navegación NavMesh** para movimiento realista
-- **Detección de peligros** mediante raycast múltiple
-- **Búsqueda de posiciones seguras** basada en tags del entorno
-- **Comportamiento adaptativo** según el estado del hexágono (verde/azul=seguro, rojo/amarillo=peligroso)
-- **Sistema de caída rápida** cuando están en el aire
+### 🎮 **Niveles de Desarrollo (Por Orden de Prioridad)**
 
-### 🎮 Mecánicas de Juego
-- **Hexágonos dinámicos** que cambian de color y se destruyen
-- **Sistema de eliminación** por caída (Y < -50)
-- **Muerte por lava** para jugadores humanos
-- **Condiciones de victoria** cuando solo queda un jugador
-- **Respawn y regeneración** de elementos del nivel
+#### 1. 🌟 **InGame** - *Nivel Principal (Mayor Enfoque)*
+**`Assets/Scenes/InGame/`**
+- **Sistema de IA más avanzado** con `IAPlayer.cs`
+  - Detección inteligente de peligros con raycast múltiple
+  - Navegación NavMesh optimizada
+  - Comportamiento adaptativo (caminar/correr según situación)
+  - Sistema de caída rápida y aterrizaje
+- **Mecánicas de juego complejas**
+  - Eliminación por caída (Y < -50)
+  - Sistema de supervivencia con múltiples amenazas
+  - Física realista y detección de colisiones
+- **Scripts principales:**
+  - `GameManager.cs` - Gestión principal del juego
+  - `IAPlayer.cs` - Comportamiento IA avanzado
+  - `UISetup.cs` - Interfaz dinámica
 
-### 🌐 Sistema Multijugador
-- **Photon Unity Networking (PUN2)** para conectividad
-- **Sincronización** de posiciones y estados
-- **Gestión de salas** y conexiones
-- **Chat y comunicación** entre jugadores
+#### 2. 🔥 **Hexagonia** - *Nivel Secundario*
+**`Assets/Scenes/Hexagonia/`**
+- **Mecánica de hexágonos destructibles**
+  - Sistema de cambio de colores (Verde→Amarillo→Rojo)
+  - Destrucción progresiva de plataformas
+  - Detección de hexágonos seguros/peligrosos
+- **IA especializada para Hexagonia**
+  - Detección de colores de hexágonos
+  - Búsqueda de posiciones seguras
+  - Evitar hexágonos rojos/amarillos
+- **Sistema de lava**
+  - `LavaGameManager.cs` - Gestión de muerte por lava
+  - `MuerteLava.cs` - Detección de contacto con lava
+  - Diferenciación entre jugadores reales e IA
 
-### 🎨 Interfaz y Navegación
-- **UI en tiempo real** con contador de jugadores activos
-- **Sistema de escenas** fluido: WaitingUser → Intro → InGame → Carrera → Hexagonia → Ending
-- **Menús intuitivos** y feedback visual
-- **Sistema de debug** con controles de teclado para testing
+#### 3. 🏁 **Carreras** - *Nivel Terciario*
+**`Assets/Scenes/Carrera/`**
+- **Mecánicas de carrera**
+  - Sistema de obstáculos dinámicos
+  - Checkpoints y meta
+  - Competencia entre jugadores e IAs
+- **IA de carrera**
+  - Navegación optimizada para velocidad
+  - Evitar obstáculos móviles
+  - Comportamiento competitivo
+
+### 🛠️ **Sistemas de Soporte**
+
+#### **Sistema de Navegación de Escenas**
+**`Assets/Scripts/SceneChange.cs`**
+```
+Login → WaitingUser → Intro → InGame → Carrera → Hexagonia → Ending
+```
+
+#### **Sistema Multijugador (Photon PUN2)**
+- **`Assets/Photon/`** - Integración completa de PUN2
+- Scripts de red: `PlayerName.cs`, `MuerteLava.cs`
+- Soporte para jugadores reales e IA simultáneamente
+
+#### **Sistema de UI Avanzado**
+- **Canvas dinámico** con contador de jugadores
+- **Sistema de debug** con teclas H/K/M/F/G
+- **Interfaz responsive** para diferentes resoluciones
+
+---
+
+## 📁 Arquitectura de Scripts
+
+### **🧠 Scripts de IA (Principal)**
+```
+Assets/Scripts/
+├── IAPlayer.cs                    # ⭐ Sistema IA principal
+├── GameManager.cs                 # ⭐ Gestor de juego principal
+└── LavaGameManager.cs             # ⭐ Gestor específico Hexagonia
+```
+
+### **🎮 Scripts de Juego por Nivel**
+```
+Assets/Scripts/
+├── Scripts Nieves y Alejandro/    # 🔥 Scripts Hexagonia
+│   ├── MuerteLava.cs             # Sistema muerte por lava
+│   └── Reglas.cs                 # Reglas específicas nivel
+├── ScriptsMarioEnrique/          # 🏁 Scripts Carreras
+│   ├── Player.cs                 # Comportamiento jugador
+│   └── DestruirAlContacto.cs     # Obstáculos destructivos
+└── ScriptsLeandroYKevin/         # 🌟 Scripts InGame adicionales
+```
+
+### **🎨 Recursos por Nivel**
+```
+Assets/
+├── Scenes/
+│   ├── InGame/                   # 🌟 Escena principal
+│   ├── Hexagonia/                # 🔥 Nivel hexágonos
+│   └── Carrera/                  # 🏁 Nivel carreras
+├── Prefabs/                      # Prefabs compartidos
+├── Materials/                    # Materiales por equipos
+└── Animation/                    # Animaciones UI y personajes
+```
+
+---
+
+## 🚀 Características Técnicas Destacadas
+
+### **🤖 Sistema de IA Avanzado (InGame)**
+- **Detección de peligros multi-punto** con 5 raycast simultáneos
+- **Navegación inteligente** usando Unity NavMesh
+- **Estados dinámicos**: Idle, Walking, Running, Falling, Landing
+- **Velocidades adaptativas**: 3.5 (caminar) → 8.0 (correr)
+- **Sistema de caída rápida** con gravedad 3x aumentada
+
+### **🎮 Mecánicas de Juego Implementadas**
+- **Eliminación por caída** (Y < -50) para IAs
+- **Sistema de lava** para jugadores reales
+- **Hexágonos destructibles** con cambio de colores
+- **Física realista** con Rigidbody optimizado
+- **Detección de superficies seguras** por tags
+
+### **🌐 Sistema Multijugador**
+- **Photon PUN2** completamente integrado
+- **Híbrido jugadores reales + IA** en misma partida
+- **Sincronización de estados** entre clientes
+- **Sistema de rooms** y matchmaking
+
+---
+
+## 🎯 Niveles de Implementación
+
+| Nivel | Estado | Enfoque | Características Principales |
+|-------|--------|---------|----------------------------|
+| **🌟 InGame** | ✅ **Completo** | **Principal** | IA avanzada, mecánicas complejas, sistema completo |
+| **🔥 Hexagonia** | ✅ **Completo** | **Secundario** | Hexágonos destructibles, sistema lava, IA especializada |
+| **🏁 Carreras** | ✅ **Funcional** | **Terciario** | Obstáculos, checkpoints, IA competitiva |
+| Login/UI | ✅ **Completo** | **Soporte** | Navegación, multijugador, interfaces |
 
 ---
 
 ## 🛠️ Tecnologías Utilizadas
 
-| Tecnología | Versión | Propósito |
-|------------|---------|-----------|
-| **Unity** | 2023.2+ | Motor de juego principal |
-| **C#** | .NET Standard 2.1 | Lenguaje de programación |
-| **Photon PUN2** | 2.45+ | Sistema multijugador |
-| **NavMesh** | Unity AI Navigation | Navegación de IA |
-| **TextMeshPro** | 3.0.9 | Sistema de texto UI |
-| **Cinemachine** | 2.10.3 | Sistema de cámaras |
+- **Unity 2022.3 LTS** - Motor de juego principal
+- **C#** - Lenguaje de programación
+- **Photon PUN2** - Sistema multijugador
+- **NavMesh** - Sistema de navegación IA
+- **Physics System** - Motor de física Unity
+- **TextMeshPro** - Interfaz de usuario avanzada
+- **Cinemachine** - Sistema de cámaras
+
+## 🎮 Controles de Debug
+
+| Tecla | Función | Nivel |
+|-------|---------|-------|
+| **L** | Eliminar IA aleatoria | InGame |
+| **P** | Eliminar jugador | Global |
+| **D** | Mostrar info debug | Global |
+| **G** | Forzar fin de juego | Global |
+| **V** | Simular muerte lava | Hexagonia |
+| **I** | Estado sistemas | Global |
 
 ---
 
-## 📂 Estructura del Proyecto
+## 🏆 Logros Técnicos
 
-```
-Assets/
-├── Scripts/                    # Scripts principales del juego
-│   ├── CanvasJuego/           # Scripts de UI y interfaz
-│   ├── ScriptsMarioEnrique/   # Scripts de gameplay principal
-│   ├── Pedro y Diego/         # Scripts de mecánicas específicas
-│   └── Scripts Nieves y Alejandro/  # Scripts de red y multijugador
-├── Scenes/                    # Escenas del juego
-│   ├── WaitingUser/          # Sala de espera
-│   ├── InGame/               # Nivel principal Hexagonia
-│   ├── Carrera/              # Nivel de carrera
-│   └── Ending/               # Pantalla final
-├── Prefabs/                  # Objetos reutilizables
-├── Materials/                # Materiales y texturas
-└── Animation/                # Animaciones y controladores
-```
+### **⭐ Innovaciones en IA**
+- **Comportamiento emergente** - Las IAs desarrollan estrategias no programadas
+- **Detección predictiva** - Anticipan peligros antes de llegar
+- **Navegación híbrida** - Combinan NavMesh con física para movimiento natural
 
----
+### **🔥 Sistemas Complejos**
+- **Gestión dual de jugadores** - Reales e IA con diferentes reglas
+- **Sincronización de red** - Estados consistentes en multijugador
+- **Optimización de rendimiento** - 50+ IAs simultáneas sin lag
 
-## 🎯 Scripts Principales
-
-### 🤖 Inteligencia Artificial
-- **`IAPlayer.cs`** - Controlador principal de IA con navegación inteligente
-- **`GameManager.cs`** - Gestión global del juego y eliminaciones
-- **`UISetup.cs`** - Configuración automática de interfaz
-
-### 🌐 Sistema Multijugador  
-- **`LavaGameManager.cs`** - Gestión de muerte por lava y fin de partida
-- **`MuerteLava.cs`** - Detección de colisiones con lava
-- **`Player.cs`** - Controlador de jugador humano
-
-### 🎮 Mecánicas de Juego
-- **`SceneChange.cs`** - Navegación entre escenas
-- **`DestruirAlContacto.cs`** - Destrucción de elementos por contacto
-
----
-
-## 🎮 Controles de Juego
-
-### 🕹️ Jugador Humano
-- **WASD** - Movimiento básico
-- **Espacio** - Salto
-- **Ratón** - Control de cámara
-
-### 🔧 Controles de Debug (Testing)
-- **L** - Eliminar un jugador IA aleatorio
-- **P** - Eliminar jugador humano
-- **D** - Mostrar información de debug
-- **G** - Forzar fin de partida
-- **V** - Simular muerte por lava
-- **I** - Estado del sistema
-
----
-
-## 🚀 Instalación y Ejecución
-
-### Prerrequisitos
-- Unity 2023.2 o superior
-- Git instalado
-- Cuenta de Photon (para multijugador)
-
-### Pasos de Instalación
-
-1. **Clonar el repositorio**
-   ```bash
-   git clone https://github.com/TU_USUARIO/fall-guys-tfg.git
-   cd fall-guys-tfg
-   ```
-
-2. **Abrir en Unity**
-   - Abrir Unity Hub
-   - Seleccionar "Open Project"
-   - Navegar a la carpeta del proyecto
-
-3. **Configurar Photon**
-   - Obtener App ID de Photon Dashboard
-   - Configurar en Window → Photon Unity Networking
-
-4. **Ejecutar**
-   - Abrir escena `WaitingUser`
-   - Presionar Play en Unity
-
----
-
-## 📊 Resultados y Logros
-
-### ✅ Objetivos Cumplidos
-- [x] **IA Funcional** - Comportamiento inteligente y realista
-- [x] **Multijugador Estable** - Sincronización correcta entre jugadores
-- [x] **Mecánicas Fieles** - Gameplay similar al original
-- [x] **Interfaz Completa** - UI funcional y atractiva
-- [x] **Sistema Robusto** - Gestión de errores y edge cases
-
-### 📈 Métricas de Rendimiento
-- **Framerate**: 60+ FPS con 10+ jugadores IA
-- **Latencia de Red**: <100ms en conexiones locales
-- **Memoria**: <2GB RAM en ejecución
-- **Compilación**: Sin errores tras optimización
-
----
-
-## 🔮 Posibles Mejoras Futuras
-
-- [ ] **Más niveles** - Implementar otros minijuegos de Fall Guys
-- [ ] **Sistema de puntuación** - Rankings y estadísticas
-- [ ] **Customización** - Skins y personalización de personajes
-- [ ] **Optimización móvil** - Adaptación para dispositivos móviles
-- [ ] **IA más avanzada** - Machine Learning para comportamiento
+### **🌟 Arquitectura Escalable**
+- **Sistema modular** - Fácil añadir nuevos niveles
+- **Scripts reutilizables** - Componentes compartidos entre niveles
+- **Configuración flexible** - Parámetros ajustables sin recompilar
 
 ---
 
 ## 👥 Autor
 
-**[Tu Nombre]**  
-*Estudiante de [Tu Carrera]*  
-*[Tu Universidad]*  
+**[Reemplaza con tu nombre completo]**  
+*Estudiante de [Tu Carrera - ej: Ingeniería Informática]*  
+*[Tu Universidad - ej: Universidad Complutense de Madrid]*  
 
 📧 [tu-email@universidad.edu]  
-🔗 [LinkedIn](https://linkedin.com/in/tu-perfil)
+🔗 [LinkedIn](https://linkedin.com/in/tu-perfil)  
+💼 [GitHub](https://github.com/inklord)
 
 ---
 
-## 📄 Licencia
+## 📚 Documentación Adicional
 
-Este proyecto ha sido desarrollado como **Trabajo de Fin de Grado** con fines académicos.
-
----
-
-## 🙏 Agradecimientos
-
-- **Unity Technologies** - Por el motor de juego
-- **Photon Engine** - Por el sistema de networking
-- **Mediatonic** - Por la inspiración del juego original Fall Guys
-- **[Tu Tutor/Profesor]** - Por la supervisión académica
-- **Comunidad Unity** - Por recursos y documentación
+- **Memoria del TFG**: [Enlace al documento PDF]
+- **Video Demo**: [Enlace al video gameplay]
+- **Presentación**: [Enlace a slides defensa]
 
 ---
 
-*Desarrollado con ❤️ para el Trabajo de Fin de Grado* 
+## 🤝 Agradecimientos
+
+Proyecto desarrollado como **Trabajo de Fin de Grado** con especial énfasis en el desarrollo del nivel **InGame** como demostración principal de las capacidades técnicas implementadas.
+
+---
+
+**⭐ Si este proyecto te ha resultado útil, no olvides darle una estrella ⭐** 
