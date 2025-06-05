@@ -199,6 +199,7 @@ Assets/
 
 ## 👥 Autor
 
+<<<<<<< HEAD
 **[Reemplaza con tu nombre completo]**  
 *Estudiante de [Tu Carrera - ej: Ingeniería Informática]*  
 *[Tu Universidad - ej: Universidad Complutense de Madrid]*  
@@ -206,6 +207,14 @@ Assets/
 📧 [tu-email@universidad.edu]  
 🔗 [LinkedIn](https://linkedin.com/in/tu-perfil)  
 💼 [GitHub](https://github.com/inklord)
+=======
+**Mario Cascado Nieto**  
+*Estudiante de DAM*  
+*Colegio Miralmonte*  
+
+📧 mariocn881@gmail.com  
+🔗 [LinkedIn]www.linkedin.com/in/mario-cascado-nieto-190a48283
+>>>>>>> 4e4321653c5802f5b764099f3cb90d929e7bced2
 
 ---
 
@@ -219,8 +228,17 @@ Assets/
 
 ## 🤝 Agradecimientos
 
+<<<<<<< HEAD
 Proyecto desarrollado como **Trabajo de Fin de Grado** con especial énfasis en el desarrollo del nivel **InGame** como demostración principal de las capacidades técnicas implementadas.
 
 ---
 
 **⭐ Si este proyecto te ha resultado útil, no olvides darle una estrella ⭐** 
+=======
+- **Unity Technologies** - Por el motor de juego
+- **Photon Engine** - Por el sistema de networking
+- **Mediatonic** - Por la inspiración del juego original Fall Guys
+- **Juan Antonio Arnau** - Por la supervisión académica
+- **Comunidad Unity** - Por recursos y documentación
+
+>>>>>>> 4e4321653c5802f5b764099f3cb90d929e7bced2
