@@ -176,12 +176,12 @@ Assets/
 
 ## 👥 Autor
 
-**[Tu Nombre]**  
-*Estudiante de [Tu Carrera]*  
-*[Tu Universidad]*  
+**Mario Cascado Nieto**  
+*Estudiante de DAM*  
+*Colegio Miralmonte*  
 
-📧 [tu-email@universidad.edu]  
-🔗 [LinkedIn](https://linkedin.com/in/tu-perfil)
+📧 mariocn881@gmail.com  
+🔗 [LinkedIn]www.linkedin.com/in/mario-cascado-nieto-190a48283
 
 ---
 
@@ -196,9 +196,6 @@ Este proyecto ha sido desarrollado como **Trabajo de Fin de Grado** con fines ac
 - **Unity Technologies** - Por el motor de juego
 - **Photon Engine** - Por el sistema de networking
 - **Mediatonic** - Por la inspiración del juego original Fall Guys
-- **[Tu Tutor/Profesor]** - Por la supervisión académica
+- **Juan Antonio Arnau** - Por la supervisión académica
 - **Comunidad Unity** - Por recursos y documentación
 
----
-
-*Desarrollado con ❤️ para el Trabajo de Fin de Grado* 
