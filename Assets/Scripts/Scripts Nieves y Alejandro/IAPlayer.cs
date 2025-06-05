@@ -23,7 +23,7 @@ public class IAPlayerSimple : MonoBehaviour
     
     [Header("Configuración de Físicas")]
     public float groundCheckDistance = 1.5f;
-    public LayerMask groundLayerMask = -1;
+    public LayerMask groundLayerMask = -1;       
     public float maxSlopeAngle = 45f;
     public float groundStickForce = 10f;
     
@@ -85,7 +85,7 @@ public class IAPlayerSimple : MonoBehaviour
         if (enableDebugLogs)
             Debug.Log($"IA Simple {gameObject.name} iniciada en posición {transform.position}");
     }
-    
+
     private void InitializeComponents()
     {
         // Obtener componentes
@@ -245,8 +245,8 @@ public class IAPlayerSimple : MonoBehaviour
         
         // Si perdió contacto con el suelo, intentar volver a la última posición válida
         if (wasGrounded && !isGrounded)
-        {
-            if (enableDebugLogs)
+                    {
+                        if (enableDebugLogs)
                 Debug.LogWarning($"IA {gameObject.name}: Perdió contacto con el suelo, regresando a posición segura");
             
             StartCoroutine(ReturnToSafePosition());
@@ -301,8 +301,8 @@ public class IAPlayerSimple : MonoBehaviour
                 
                 // Aplicar fuerza en dirección opuesta
                 Vector3 avoidanceForce = -direction * edgeAvoidanceForce;
-                if (rb != null)
-                {
+        if (rb != null)
+        {
                     rb.AddForce(avoidanceForce, ForceMode.Force);
                 }
                 
@@ -909,7 +909,7 @@ public class IAPlayerSimple : MonoBehaviour
         // Verificar si ha aterrizado en una nueva superficie
         if (isGrounded)
         {
-            RaycastHit hit;
+        RaycastHit hit;
             if (Physics.Raycast(transform.position, Vector3.down, out hit, 2f))
             {
                 // Si aterrizó en una superficie que no se está destruyendo, parar caída rápida
@@ -931,17 +931,17 @@ public class IAPlayerSimple : MonoBehaviour
             // Verificar si es un hexágono
             if (hit.collider.CompareTag("Hexagono"))
             {
-                DestroyPlayer hexagon = hit.collider.GetComponent<DestroyPlayer>();
-                if (hexagon != null)
-                {
+            DestroyPlayer hexagon = hit.collider.GetComponent<DestroyPlayer>();
+            if (hexagon != null)
+            {
                     // Verificar si es peligroso por color
-                    Renderer hexRenderer = hit.collider.GetComponent<Renderer>();
-                    if (hexRenderer != null && hexRenderer.material != null)
-                    {
-                        Color currentColor = hexRenderer.material.color;
-                        
+                Renderer hexRenderer = hit.collider.GetComponent<Renderer>();
+                if (hexRenderer != null && hexRenderer.material != null)
+                {
+                    Color currentColor = hexRenderer.material.color;
+                    
                         // Detectar colores peligrosos (rojo = destruyéndose)
-                        bool isRed = (currentColor.r > 0.7f && currentColor.g < 0.4f && currentColor.b < 0.4f);
+                    bool isRed = (currentColor.r > 0.7f && currentColor.g < 0.4f && currentColor.b < 0.4f);
                         
                         return isRed;
                     }
@@ -962,8 +962,8 @@ public class IAPlayerSimple : MonoBehaviour
             if (col.CompareTag("Hexagono"))
             {
                 DestroyPlayer hexagon = col.GetComponent<DestroyPlayer>();
-                if (hexagon != null)
-                {
+        if (hexagon != null)
+        {
                     // Verificar si es seguro por color
                     Renderer hexRenderer = col.GetComponent<Renderer>();
                     if (hexRenderer != null && hexRenderer.material != null)
@@ -1014,7 +1014,7 @@ public class IAPlayerSimple : MonoBehaviour
         Gizmos.DrawWireSphere(transform.position, wanderRadius);
         
         // Verificación de límites del mapa
-        Gizmos.color = Color.yellow;
+            Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, mapBoundaryCheck);
         
         // Raycast de verificación de suelo
@@ -1090,12 +1090,12 @@ public class IAPlayerSimple : MonoBehaviour
         
         // Indicador de estado de suelo
         Gizmos.color = isGrounded ? Color.green : Color.red;
-        Gizmos.DrawWireCube(transform.position + Vector3.up * 3f, Vector3.one * 0.2f);
+                Gizmos.DrawWireCube(transform.position + Vector3.up * 3f, Vector3.one * 0.2f);
         
         // Indicador de caída rápida
         if (isFastFalling)
-        {
-            Gizmos.color = Color.red;
+            {
+                Gizmos.color = Color.red;
             Gizmos.DrawWireCube(transform.position + Vector3.up * 4f, Vector3.one * 0.4f);
             
             // Flecha hacia abajo para mostrar dirección de caída

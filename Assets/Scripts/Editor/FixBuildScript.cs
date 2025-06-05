@@ -224,20 +224,20 @@ public static class FixBuildScript
     public static void DisableVisualScripting()
     {
         try
+    {
+        // Obtener configuración actual
+        var currentDefines = PlayerSettings.GetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup);
+        
+        // Añadir define para deshabilitar Visual Scripting
+        if (!currentDefines.Contains("DISABLE_VISUAL_SCRIPTING"))
         {
-            // Obtener configuración actual
-            var currentDefines = PlayerSettings.GetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup);
-            
-            // Añadir define para deshabilitar Visual Scripting
-            if (!currentDefines.Contains("DISABLE_VISUAL_SCRIPTING"))
-            {
-                if (!string.IsNullOrEmpty(currentDefines))
-                    currentDefines += ";DISABLE_VISUAL_SCRIPTING";
-                else
-                    currentDefines = "DISABLE_VISUAL_SCRIPTING";
-                    
-                PlayerSettings.SetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup, currentDefines);
+            if (!string.IsNullOrEmpty(currentDefines))
+                currentDefines += ";DISABLE_VISUAL_SCRIPTING";
+            else
+                currentDefines = "DISABLE_VISUAL_SCRIPTING";
                 
+            PlayerSettings.SetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup, currentDefines);
+            
                 Debug.Log("✓ Visual Scripting deshabilitado. Recompilando scripts...");
                 EditorUtility.DisplayDialog("Visual Scripting", "Visual Scripting deshabilitado.\n\nLos scripts se recompilarán automáticamente.", "OK");
             }
@@ -256,21 +256,21 @@ public static class FixBuildScript
     public static void EnableVisualScripting()
     {
         try
+    {
+        // Obtener configuración actual
+        var currentDefines = PlayerSettings.GetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup);
+        
+        // Remover define para habilitar Visual Scripting
+        if (currentDefines.Contains("DISABLE_VISUAL_SCRIPTING"))
         {
-            // Obtener configuración actual
-            var currentDefines = PlayerSettings.GetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup);
-            
-            // Remover define para habilitar Visual Scripting
-            if (currentDefines.Contains("DISABLE_VISUAL_SCRIPTING"))
-            {
-                currentDefines = currentDefines.Replace("DISABLE_VISUAL_SCRIPTING", "").Replace(";;", ";");
-                if (currentDefines.StartsWith(";"))
-                    currentDefines = currentDefines.Substring(1);
-                if (currentDefines.EndsWith(";"))
-                    currentDefines = currentDefines.Substring(0, currentDefines.Length - 1);
-                    
-                PlayerSettings.SetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup, currentDefines);
+            currentDefines = currentDefines.Replace("DISABLE_VISUAL_SCRIPTING", "").Replace(";;", ";");
+            if (currentDefines.StartsWith(";"))
+                currentDefines = currentDefines.Substring(1);
+            if (currentDefines.EndsWith(";"))
+                currentDefines = currentDefines.Substring(0, currentDefines.Length - 1);
                 
+            PlayerSettings.SetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup, currentDefines);
+            
                 Debug.Log("✓ Visual Scripting habilitado. Recompilando scripts...");
                 EditorUtility.DisplayDialog("Visual Scripting", "Visual Scripting habilitado.\n\nLos scripts se recompilarán automáticamente.", "OK");
             }
@@ -432,9 +432,9 @@ public static class FixBuildScript
         {
             System.IO.File.WriteAllText(scriptsAsmdefPath, asmdefContent);
             Debug.Log("✓ Scripts.asmdef regenerado");
-        }
-        catch (System.Exception e)
-        {
+            }
+            catch (System.Exception e)
+            {
             Debug.LogWarning($"⚠️ No se pudo regenerar Scripts.asmdef: {e.Message}");
         }
     }
