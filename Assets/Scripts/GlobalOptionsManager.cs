@@ -326,15 +326,8 @@ public class GlobalOptionsManager : MonoBehaviour
     
     #region 🐛 Debug
     
-    void Update()
-    {
-        // Debug: ESC global para abrir opciones si no hay menú específico
-        if (Input.GetKeyDown(KeyCode.Escape) && currentOptionsMenu == null)
-        {
-            Debug.Log("🔧 ESC presionado pero no hay OptionsMenu - creando uno temporal");
-            SetupCurrentScene();
-        }
-    }
+    // ESC key handling is now managed by UniversalOptionsHandler
+    // to avoid conflicts and provide consistent behavior across all scenes
     
     [System.Diagnostics.Conditional("UNITY_EDITOR")]
     void OnGUI()

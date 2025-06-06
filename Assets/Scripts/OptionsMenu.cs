@@ -41,11 +41,7 @@ public class OptionsMenu : MonoBehaviour
     
     void Update()
     {
-        // Abrir/cerrar menú con ESC
-        if (Input.GetKeyDown(KeyCode.Escape))
-        {
-            ToggleOptionsMenu();
-        }
+        // ESC key handling moved to UniversalOptionsHandler for consistency
     }
     
     #region 🎵 Volume Control
