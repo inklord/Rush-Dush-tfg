@@ -199,20 +199,8 @@ Assets/
 
 ## 👥 Autor
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-**Mario CAscado Nieto**  
-*Estudiante de Diseño de aplicaciones multiplataforma*  
-*Colegio Miralmonte*  
-
-📧 mariocn881@gmail.com  
-🔗 [LinkedIn](https://linkedin.com/in/tu-perfil)  
-💼 [GitHub](https://github.com/inklord)
-=======
->>>>>>> eabce09aa2dc03ca9bff1e8040f27bdd76fa5c59
 **Mario Cascado Nieto**  
-*Estudiante de DAM*  
+*Estudiante de Diseño de Aplicaciones Multiplataforma (DAM)*  
 *Colegio Miralmonte*  
 
 📧 mariocn881@gmail.com  

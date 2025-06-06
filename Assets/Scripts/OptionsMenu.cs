@@ -62,8 +62,16 @@ public class OptionsMenu : MonoBehaviour
         // Actualizar texto del volumen
         volumeText.text = $"Volumen: {Mathf.RoundToInt(volume * 100)}%";
         
-        // Guardar configuración
+        // Guardar configuración globalmente
         PlayerPrefs.SetFloat("Volume", volume);
+        if (GlobalOptionsManager.Instance != null)
+        {
+            GlobalOptionsManager.Instance.SaveGlobalSettings(
+                volume, 
+                PlayerPrefs.GetInt("ResolutionIndex", -1), 
+                Screen.fullScreen
+            );
+        }
     }
     
     #endregion
@@ -77,6 +85,33 @@ public class OptionsMenu : MonoBehaviour
         
         List<string> options = new List<string>();
         int currentResolutionIndex = 0;
+        
+        // Filtrar resoluciones duplicadas y mantener solo las más altas refresh rates
+        List<Resolution> uniqueResolutions = new List<Resolution>();
+        for (int i = 0; i < resolutions.Length; i++)
+        {
+            bool found = false;
+            for (int j = 0; j < uniqueResolutions.Count; j++)
+            {
+                if (resolutions[i].width == uniqueResolutions[j].width && 
+                    resolutions[i].height == uniqueResolutions[j].height)
+                {
+                    // Si encontramos la misma resolución, mantener la de mayor refresh rate
+                    if (resolutions[i].refreshRate > uniqueResolutions[j].refreshRate)
+                    {
+                        uniqueResolutions[j] = resolutions[i];
+                    }
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+            {
+                uniqueResolutions.Add(resolutions[i]);
+            }
+        }
+        
+        resolutions = uniqueResolutions.ToArray();
         
         for (int i = 0; i < resolutions.Length; i++)
         {
@@ -98,19 +133,40 @@ public class OptionsMenu : MonoBehaviour
     
     public void SetResolution(int resolutionIndex)
     {
-        Resolution resolution = resolutions[resolutionIndex];
-        Screen.SetResolution(resolution.width, resolution.height, Screen.fullScreen);
-        
-        // Guardar configuración
-        PlayerPrefs.SetInt("ResolutionIndex", resolutionIndex);
-        
-        DebugLog($"🖥️ Resolución cambiada a: {resolution.width}x{resolution.height}");
+        if (resolutionIndex >= 0 && resolutionIndex < resolutions.Length)
+        {
+            Resolution resolution = resolutions[resolutionIndex];
+            Screen.SetResolution(resolution.width, resolution.height, Screen.fullScreen);
+            
+            // Guardar configuración globalmente
+            PlayerPrefs.SetInt("ResolutionIndex", resolutionIndex);
+            if (GlobalOptionsManager.Instance != null)
+            {
+                GlobalOptionsManager.Instance.SaveGlobalSettings(
+                    PlayerPrefs.GetFloat("Volume", 0.75f), 
+                    resolutionIndex, 
+                    Screen.fullScreen
+                );
+            }
+            
+            DebugLog($"🖥️ Resolución cambiada a: {resolution.width}x{resolution.height}@{resolution.refreshRate}Hz");
+        }
     }
     
     public void SetFullscreen(bool isFullscreen)
     {
         Screen.fullScreen = isFullscreen;
         PlayerPrefs.SetInt("Fullscreen", isFullscreen ? 1 : 0);
+        
+        // Guardar configuración globalmente
+        if (GlobalOptionsManager.Instance != null)
+        {
+            GlobalOptionsManager.Instance.SaveGlobalSettings(
+                PlayerPrefs.GetFloat("Volume", 0.75f), 
+                PlayerPrefs.GetInt("ResolutionIndex", -1), 
+                isFullscreen
+            );
+        }
         
         DebugLog($"🖥️ Pantalla completa: {isFullscreen}");
     }
