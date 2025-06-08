@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentación Fall Guys Unity Clone</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: #2d3748;
+            background: #f7fafc;
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .header h2 {
+            font-size: 1.3em;
+            font-weight: 300;
+            opacity: 0.9;
+        }
+        
+        .toc {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+        }
+        
+        .toc h3 {
+            color: #4a5568;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+        
+        .toc ol {
+            list-style: none;
+            counter-reset: section-counter;
+        }
+        
+        .toc li {
+            counter-increment: section-counter;
+            margin-bottom: 8px;
+            padding-left: 30px;
+            position: relative;
+        }
+        
+        .toc li:before {
+            content: counter(section-counter) ".";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+            page-break-inside: avoid;
+        }
+        
+        .section h2 {
+            color: #2d3748;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .section h3 {
+            color: #4a5568;
+            font-size: 1.4em;
+            margin: 25px 0 15px 0;
+        }
+        
+        .section h4 {
+            color: #718096;
+            font-size: 1.2em;
+            margin: 20px 0 10px 0;
+        }
+        
+        .section h5 {
+            color: #a0aec0;
+            font-size: 1.1em;
+            margin: 15px 0 8px 0;
+        }
+        
+        pre {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Fira Code', 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        
+        code {
+            background: #edf2f7;
+            color: #2d3748;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Fira Code', 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+        
+        .highlight {
+            background: #fef5e7;
+            border-left: 4px solid #f6ad55;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .success {
+            background: #f0fff4;
+            border-left: 4px solid #48bb78;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .error {
+            background: #fed7d7;
+            border-left: 4px solid #f56565;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .info {
+            background: #ebf8ff;
+            border-left: 4px solid #4299e1;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        ul, ol {
+            margin: 15px 0;
+            padding-left: 30px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        
+        .footer {
+            background: #2d3748;
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-top: 40px;
+            text-align: center;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 500;
+            margin: 2px;
+        }
+        
+        .badge.unity { background: #000; color: white; }
+        .badge.csharp { background: #239120; color: white; }
+        .badge.photon { background: #0099ff; color: white; }
+        
+        @media print {
+            body { background: white; }
+            .section { box-shadow: none; }
+        }
+        
+        .architecture-tree {
+            font-family: monospace;
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            white-space: pre-line;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎮 DOCUMENTACIÓN TÉCNICA</h1>
+        <h2>Fall Guys Unity Clone - "Aventuras Vertiginosas en Unity"</h2>
+        <div style="margin-top: 20px;">
+            <span class="badge unity">Unity 2022.3</span>
+            <span class="badge csharp">C#</span>
+            <span class="badge photon">Photon PUN2</span>
+        </div>
+    </div>
+
+    <div class="toc">
+        <h3>📋 ÍNDICE</h3>
+        <ol>
+            <li>Información General del Proyecto</li>
+            <li>Arquitectura del Sistema</li>
+            <li>Sistema de Movimiento del Jugador</li>
+            <li>Sistema de Obstáculos</li>
+            <li>Sistema de Cámara</li>
+            <li>Mecánicas de Juego</li>
+            <li>Configuración y Setup</li>
+            <li>Guía de Implementación</li>
+            <li>Troubleshooting</li>
+            <li>Referencias y Recursos</li>
+        </ol>
+    </div>
+
+    <div class="section">
+        <h2>📊 INFORMACIÓN GENERAL</h2>
+        
+        <h3>Descripción del Proyecto</h3>
+        <p>Fall Guys Unity Clone es una implementación técnica del popular juego de Battle Royale multijugador, desarrollado en Unity Engine. El proyecto se centra en recrear las mecánicas principales de movimiento, obstáculos dinámicos, y sistemas de colisión que caracterizan a Fall Guys.</p>
+        
+        <h3>Especificaciones Técnicas</h3>
+        <ul>
+            <li><strong>Motor:</strong> Unity 2022.3 LTS</li>
+            <li><strong>Lenguaje:</strong> C# (.NET Framework)</li>
+            <li><strong>Plataforma Target:</strong> PC (Windows)</li>
+            <li><strong>Arquitectura:</strong> Component-Based System</li>
+            <li><strong>Networking:</strong> Photon PUN2 (Multiplayer)</li>
+            <li><strong>Physics:</strong> Unity Physics 3D</li>
+        </ul>
+        
+        <h3>Características Principales</h3>
+        <div class="success">
+            <ul>
+                <li>✅ Sistema de movimiento fluido con detección avanzada de suelo</li>
+                <li>🔨 Obstáculos dinámicos con física realista</li>
+                <li>📹 Sistema de cámara profesional con múltiples modos</li>
+                <li>🎯 Sistema de colisiones híbrido (Triggers + Colliders)</li>
+                <li>🎮 Mecánicas de salto mejoradas con Coyote Time</li>
+                <li>📊 Sistema de gestión de estados del jugador</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>🏗️ ARQUITECTURA DEL SISTEMA</h2>
+        
+        <h3>Estructura de Componentes</h3>
+        <div class="architecture-tree">
+📁 Fall Guys Clone
+├── 🎮 Core Systems
+│   ├── LHS_MainPlayer.cs (Controlador principal)
+│   ├── MovimientoCamaraNuevo.cs (Sistema de cámara)
+│   └── GameManager.cs (Gestión de partida)
+├── 🚧 Obstacle Systems
+│   ├── SpinningHammer.cs (Martillos giratorios)
+│   ├── DynamicObstacle.cs (Sistema universal)
+│   └── BounceWall.cs (Paredes de rebote)
+├── 🌐 Networking
+│   ├── PhotonRealtime
+│   └── PhotonUnityNetworking
+└── 🎨 Assets & Resources
+    ├── Materials/
+    ├── Prefabs/
+    └── Scenes/
+        </div>
+        
+        <h3>Patrón de Diseño</h3>
+        <p>El proyecto utiliza principalmente el patrón <strong>Component-Entity System</strong> de Unity, complementado con:</p>
+        <ul>
+            <li><strong>Observer Pattern:</strong> Para eventos de colisión</li>
+            <li><strong>State Pattern:</strong> Para estados del jugador</li>
+            <li><strong>Factory Pattern:</strong> Para generación de obstáculos</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>🏃‍♂️ SISTEMA DE MOVIMIENTO DEL JUGADOR</h2>
+        
+        <h3>Clase Principal: <code>LHS_MainPlayer.cs</code></h3>
+        
+        <h4>Variables de Configuración</h4>
+        <pre><code>[Header("Movement Settings")]
+public float speed = 10f;                    // Velocidad de movimiento
+public float rotateSpeed = 5f;               // Velocidad de rotación
+public float jumpPower = 5f;                 // Fuerza de salto
+
+[Header("Ground Check")]
+public float groundCheckDistance = 2.0f;     // Distancia de detección
+public LayerMask groundLayerMask = -1;       // Capas de suelo
+public bool showDebugInfo = true;            // Debug visual
+
+[Header("Jump Settings")]
+public float jumpCooldown = 0.1f;            // Cooldown entre saltos
+public float coyoteTime = 0.1f;              // Tiempo extra para saltar</code></pre>
+        
+        <h4>Mecánicas Avanzadas</h4>
+        
+        <h5>1. Detección Multi-Punto de Suelo</h5>
+        <pre><code>void CheckGrounded()
+{
+    // Raycast principal desde el centro
+    Vector3 rayStart = transform.position + Vector3.up * 0.1f;
+    bool centerHit = Physics.Raycast(rayStart, Vector3.down, out hit, 
+                                    groundCheckDistance, groundLayerMask);
+    
+    // Verificación en 4 puntos adicionales para mayor precisión
+    Vector3[] checkPoints = {
+        rayStart + Vector3.forward * 0.3f,
+        rayStart + Vector3.back * 0.3f,
+        rayStart + Vector3.left * 0.3f,
+        rayStart + Vector3.right * 0.3f
+    };
+    
+    // Resultado final basado en cualquier punto de contacto
+    isGrounded = centerHit || AnyCornerHit(checkPoints);
+}</code></pre>
+        
+        <h5>2. Sistema de Salto con Coyote Time</h5>
+        <pre><code>void HandleJumpInput()
+{
+    if (Input.GetButtonDown("Jump"))
+    {
+        jumpRequested = true;
+    }
+    
+    if (jumpRequested)
+    {
+        bool canPerformJump = isGrounded && canJump ||
+                             (!isGrounded && canJump && 
+                              (Time.time - lastGroundedTime) <= coyoteTime);
+        
+        if (canPerformJump && (Time.time - lastJumpTime) >= jumpCooldown)
+        {
+            PerformJump();
+        }
+        jumpRequested = false;
+    }
+}</code></pre>
+    </div>
+
+    <div class="section">
+        <h2>🚧 SISTEMA DE OBSTÁCULOS</h2>
+        
+        <h3>Arquitectura Híbrida de Tres Capas</h3>
+        
+        <h4>Capa 1: Detección de Colisiones</h4>
+        <pre><code>// Manejo unificado de Triggers y Colliders
+private void OnTriggerEnter(Collider other) => 
+    HandleObstacleCollision(other.gameObject, other.transform.position);
+private void OnCollisionEnter(Collision collision) => 
+    HandleObstacleCollision(collision.gameObject, collision.contacts[0].point);</code></pre>
+        
+        <h4>Capa 2: Sistema por Tags</h4>
+        <pre><code>void HandleObstacleCollision(GameObject collisionObject, Vector3 contactPoint)
+{
+    switch (collisionObject.tag)
+    {
+        case "SpinningHammer": 
+            HandleSpinningHammerCollision(collisionObject, contactPoint); 
+            break;
+        case "MovingObstacle": 
+            HandleMovingObstacleCollision(collisionObject, contactPoint); 
+            break;
+        case "Bouncer": 
+            HandleBouncerCollision(collisionObject, contactPoint); 
+            break;
+        case "Wall": 
+            HandleWallCollision(collisionObject, contactPoint); 
+            break;
+        default: 
+            HandleDynamicObstacleCollision(collisionObject, contactPoint); 
+            break;
+    }
+}</code></pre>
+        
+        <h3>SpinningHammer.cs - Martillos Giratorios</h3>
+        
+        <h4>Configuración Principal</h4>
+        <pre><code>[Header("💥 Impact Settings")]
+public float baseKnockbackForce = 35f;       // Fuerza base (incrementada)
+public float maxKnockbackForce = 70f;        // Fuerza máxima
+public float verticalForceMultiplier = 0.8f; // Multiplicador vertical
+public float minVerticalForce = 15f;         // Fuerza vertical mínima
+
+[Header("🔄 Rotation Settings")]
+public float rotationSpeed = 180f;           // Grados por segundo
+public Vector3 rotationAxis = Vector3.up;    // Eje de rotación
+public bool randomStartRotation = true;      // Rotación inicial aleatoria</code></pre>
+        
+        <h4>Cálculo de Fuerzas Avanzado</h4>
+        <pre><code>public Vector3 GetLaunchForce(Vector3 playerPosition)
+{
+    // Dirección horizontal (alejar del martillo)
+    Vector3 horizontalDirection = (playerPosition - transform.position).normalized;
+    horizontalDirection.y = 0;
+    
+    // Combinar fuerza horizontal y vertical garantizada
+    Vector3 horizontalForce = horizontalDirection * GetKnockbackForce();
+    Vector3 verticalForce = Vector3.up * GetVerticalForce();
+    
+    return horizontalForce + verticalForce;
+}</code></pre>
+    </div>
+
+    <div class="section">
+        <h2>📹 SISTEMA DE CÁMARA</h2>
+        
+        <h3>MovimientoCamaraNuevo.cs - Cámara Profesional</h3>
+        
+        <h4>5 Modos de Cámara</h4>
+        <pre><code>public enum CameraMode
+{
+    ThirdPerson,    // Tercera persona estándar
+    FirstPerson,    // Primera persona
+    OverShoulder,   // Sobre el hombro
+    Free,          // Cámara libre
+    Cinematic      // Modo cinemático
+}</code></pre>
+        
+        <h4>Sistema Anti-NaN</h4>
+        <div class="info">
+            <p><strong>Prevención de errores críticos:</strong> Sistema implementado para evitar posiciones NaN que causan crashes.</p>
+        </div>
+        <pre><code>bool IsValidVector3(Vector3 vector)
+{
+    return !float.IsNaN(vector.x) && !float.IsNaN(vector.y) && !float.IsNaN(vector.z) &&
+           !float.IsInfinity(vector.x) && !float.IsInfinity(vector.y) && !float.IsInfinity(vector.z);
+}</code></pre>
+    </div>
+
+    <div class="section">
+        <h2>⚙️ CONFIGURACIÓN Y SETUP</h2>
+        
+        <h3>Requerimientos del Sistema</h3>
+        <ul>
+            <li>Unity 2022.3 LTS o superior</li>
+            <li>Visual Studio 2019/2022 o VS Code</li>
+            <li>Git para control de versiones</li>
+            <li>8GB RAM mínimo, 16GB recomendado</li>
+        </ul>
+        
+        <h3>Configuración Inicial</h3>
+        
+        <h4>1. Configurar Tags</h4>
+        <div class="highlight">
+            <ul>
+                <li>Player</li>
+                <li>SpinningHammer</li>
+                <li>MovingObstacle</li>
+                <li>Bouncer</li>
+                <li>Pusher</li>
+                <li>Wall</li>
+                <li>Floor</li>
+                <li>Platform</li>
+            </ul>
+        </div>
+        
+        <h4>2. Configurar Layers</h4>
+        <table>
+            <tr><th>Layer</th><th>Nombre</th><th>Uso</th></tr>
+            <tr><td>0</td><td>Default</td><td>Objetos generales</td></tr>
+            <tr><td>3</td><td>Ground</td><td>Superficies de suelo</td></tr>
+            <tr><td>6</td><td>Player</td><td>Jugador principal</td></tr>
+            <tr><td>7</td><td>Obstacles</td><td>Obstáculos dinámicos</td></tr>
+            <tr><td>8</td><td>Interactive</td><td>Elementos interactivos</td></tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>🔧 TROUBLESHOOTING</h2>
+        
+        <h3>Problemas Comunes</h3>
+        
+        <h4>1. Jugador no salta</h4>
+        <div class="error">
+            <p><strong>❌ Problema:</strong> canJump = false</p>
+        </div>
+        <div class="success">
+            <p><strong>✅ Solución:</strong></p>
+            <ul>
+                <li>Verificar isGrounded y lastGroundedTime</li>
+                <li>Activar showDebugInfo para ver raycast</li>
+                <li>Comprobar groundLayerMask</li>
+            </ul>
+        </div>
+        
+        <h4>2. Martillo no lanza al jugador</h4>
+        <div class="error">
+            <p><strong>❌ Problema:</strong> Tag incorrecto o ausente</p>
+        </div>
+        <div class="success">
+            <p><strong>✅ Solución:</strong></p>
+            <ol>
+                <li>Verificar tag "SpinningHammer"</li>
+                <li>Comprobar que tiene script SpinningHammer</li>
+                <li>Revisar configuración de Collider (Trigger vs Solid)</li>
+            </ol>
+        </div>
+        
+        <h4>3. Cámara con posición NaN</h4>
+        <div class="error">
+            <p><strong>❌ Problema:</strong> Cálculos matemáticos inválidos</p>
+        </div>
+        <div class="success">
+            <p><strong>✅ Solución:</strong> Sistema IsValidVector3() automático implementado</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>📊 MÉTRICAS Y VALORES RECOMENDADOS</h2>
+        
+        <h3>Configuración del Jugador</h3>
+        <table>
+            <tr><th>Variable</th><th>Valor</th><th>Descripción</th></tr>
+            <tr><td>speed</td><td>10f</td><td>Velocidad óptima para Fall Guys</td></tr>
+            <tr><td>rotateSpeed</td><td>5f</td><td>Rotación responsiva pero estable</td></tr>
+            <tr><td>jumpPower</td><td>5f</td><td>Salto satisfactorio</td></tr>
+            <tr><td>groundCheckDistance</td><td>2.0f</td><td>Detección confiable</td></tr>
+            <tr><td>jumpCooldown</td><td>0.1f</td><td>Previene spam</td></tr>
+            <tr><td>coyoteTime</td><td>0.1f</td><td>Feel natural</td></tr>
+        </table>
+        
+        <h3>Configuración de Martillos</h3>
+        <table>
+            <tr><th>Variable</th><th>Valor</th><th>Descripción</th></tr>
+            <tr><td>baseKnockbackForce</td><td>35f</td><td>Fuerza base visible</td></tr>
+            <tr><td>maxKnockbackForce</td><td>70f</td><td>Máximo dramático</td></tr>
+            <tr><td>minVerticalForce</td><td>15f</td><td>Garantiza elevación</td></tr>
+            <tr><td>rotationSpeed</td><td>180f</td><td>Velocidad intimidante</td></tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>📝 CHANGELOG</h2>
+        
+        <h3>Versión 2.0 - Sistema de Obstáculos Avanzado</h3>
+        <div class="success">
+            <ul>
+                <li>✅ Implementado SpinningHammer con fuerzas variables</li>
+                <li>✅ Sistema DynamicObstacle universal</li>
+                <li>✅ Detección híbrida Trigger + Collider</li>
+                <li>✅ Fuerzas verticales garantizadas</li>
+            </ul>
+        </div>
+        
+        <h3>Versión 1.5 - Mejoras de Movimiento</h3>
+        <div class="success">
+            <ul>
+                <li>✅ Sistema de salto con Coyote Time</li>
+                <li>✅ Detección multi-punto de suelo</li>
+                <li>✅ Controles basados en cámara</li>
+                <li>✅ Sistema anti-NaN para cámara</li>
+            </ul>
+        </div>
+        
+        <h3>Versión 1.0 - Base Implementation</h3>
+        <div class="success">
+            <ul>
+                <li>✅ Movimiento básico del jugador</li>
+                <li>✅ Sistema de cámara fundamental</li>
+                <li>✅ Colisiones básicas</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>🎯 ROADMAP FUTURO</h2>
+        
+        <h3>Próximas Implementaciones</h3>
+        <div class="info">
+            <ul>
+                <li>[ ] Sistema de checkpoints</li>
+                <li>[ ] Multiplayer completo con sincronización</li>
+                <li>[ ] Sistema de rankings y puntuaciones</li>
+                <li>[ ] Más tipos de obstáculos (péndulos, plataformas móviles)</li>
+                <li>[ ] Sistema de customización de personajes</li>
+                <li>[ ] Modo espectador</li>
+                <li>[ ] Replay system</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p><strong>🔧 Desarrollado con Unity Engine</strong></p>
+        <p><strong>📅 Última actualización:</strong> Diciembre 2024</p>
+        <p><strong>👨‍💻 Equipo de desarrollo:</strong> [Tu nombre/equipo]</p>
+        <p><strong>📧 Contacto:</strong> [Tu email]</p>
+        <hr style="margin: 20px 0; border: none; height: 1px; background: rgba(255,255,255,0.3);">
+        <p style="font-size: 0.9em; opacity: 0.8;"><em>Esta documentación es un documento vivo y se actualiza constantemente con nuevas implementaciones y mejoras del sistema.</em></p>
+    </div>
+</body>
+</html> 

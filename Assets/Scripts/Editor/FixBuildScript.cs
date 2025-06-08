@@ -240,9 +240,9 @@ public static class FixBuildScript
             
                 Debug.Log("✓ Visual Scripting deshabilitado. Recompilando scripts...");
                 EditorUtility.DisplayDialog("Visual Scripting", "Visual Scripting deshabilitado.\n\nLos scripts se recompilarán automáticamente.", "OK");
-            }
-            else
-            {
+        }
+        else
+        {
                 Debug.Log("ℹ️ Visual Scripting ya está deshabilitado");
             }
         }
@@ -273,9 +273,9 @@ public static class FixBuildScript
             
                 Debug.Log("✓ Visual Scripting habilitado. Recompilando scripts...");
                 EditorUtility.DisplayDialog("Visual Scripting", "Visual Scripting habilitado.\n\nLos scripts se recompilarán automáticamente.", "OK");
-            }
-            else
-            {
+        }
+        else
+        {
                 Debug.Log("ℹ️ Visual Scripting ya está habilitado");
             }
         }
@@ -304,7 +304,7 @@ public static class FixBuildScript
     
     [MenuItem("Fix/🔗 Fix Missing References (Critical)", priority = 1)]
     public static void FixMissingReferences()
-    {
+            {
         Debug.Log("=== REPARANDO REFERENCIAS FALTANTES ===");
         
         try
@@ -348,7 +348,7 @@ public static class FixBuildScript
             // 5. Forzar recompilación completa
             AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
             UnityEditor.Compilation.CompilationPipeline.RequestScriptCompilation();
-            
+        
             Debug.Log("✅ REPARACIÓN DE REFERENCIAS COMPLETADA");
             EditorUtility.DisplayDialog("Referencias Reparadas", 
                 "Reparación completada.\n\nEspera a que Unity termine de recompilar.\n\nSi persisten errores, usa 'Delete Assembly Definitions'", "OK");
@@ -381,16 +381,16 @@ public static class FixBuildScript
             );
             
             foreach (var file in asmdefFiles)
-            {
+        {
                 System.IO.File.Delete(file);
                 var metaFile = file + ".meta";
                 if (System.IO.File.Exists(metaFile))
-                {
+            {
                     System.IO.File.Delete(metaFile);
                 }
                 Debug.Log($"✓ Eliminado: {System.IO.Path.GetFileName(file)}");
-            }
-            
+        }
+        
             // Forzar refresh
             AssetDatabase.Refresh();
             
@@ -401,7 +401,7 @@ public static class FixBuildScript
         catch (System.Exception e)
         {
             Debug.LogError($"❌ Error eliminando Assembly Definitions: {e.Message}");
-        }
+    }
     }
     
     private static void RegenerateAssemblyDefinitions()
@@ -428,14 +428,14 @@ public static class FixBuildScript
     ""noEngineReferences"": false
 }";
         
-        try
-        {
+            try
+            {
             System.IO.File.WriteAllText(scriptsAsmdefPath, asmdefContent);
             Debug.Log("✓ Scripts.asmdef regenerado");
             }
             catch (System.Exception e)
             {
             Debug.LogWarning($"⚠️ No se pudo regenerar Scripts.asmdef: {e.Message}");
+            }
         }
-    }
 } 

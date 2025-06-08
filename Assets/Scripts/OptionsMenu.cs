@@ -28,11 +28,12 @@ public class OptionsMenu : MonoBehaviour
     private Resolution[] resolutions;
     private bool isGamePaused = false;
     private float originalTimeScale;
+    private PersistentSettingsManager.GameSettings cachedSettings;
     
     void Start()
     {
         SetupResolutions();
-        LoadSettings();
+        LoadSettingsFromPersistentManager();
         SetupButtons();
         
         // El menú empieza cerrado
@@ -48,18 +49,42 @@ public class OptionsMenu : MonoBehaviour
     
     public void SetVolume(float volume)
     {
+        // Usar PersistentSettingsManager para mantener consistencia
+        if (PersistentSettingsManager.Instance != null)
+        {
+            PersistentSettingsManager.Instance.SetMasterVolume(volume);
+        }
+        else
+        {
+            // Fallback al método anterior
+            SetVolumeFallback(volume);
+        }
+        
+        // Actualizar texto del volumen
+        if (volumeText != null)
+        {
+            volumeText.text = $"Volumen: {Mathf.RoundToInt(volume * 100)}%";
+        }
+        
+        DebugLog($"🔊 Volumen configurado: {Mathf.RoundToInt(volume * 100)}%");
+    }
+    
+    void SetVolumeFallback(float volume)
+    {
         // Convertir de 0-1 a dB (-80 a 0)
         float dB = Mathf.Log10(volume) * 20;
         if (volume == 0)
             dB = -80f;
             
-        audioMixer.SetFloat("MasterVolume", dB);
+        if (audioMixer != null)
+        {
+            audioMixer.SetFloat("MasterVolume", dB);
+        }
         
-        // Actualizar texto del volumen
-        volumeText.text = $"Volumen: {Mathf.RoundToInt(volume * 100)}%";
-        
-        // Guardar configuración globalmente
+        // Guardar configuración
         PlayerPrefs.SetFloat("Volume", volume);
+        
+        // Sincronizar con GlobalOptionsManager si existe
         if (GlobalOptionsManager.Instance != null)
         {
             GlobalOptionsManager.Instance.SaveGlobalSettings(
@@ -77,54 +102,58 @@ public class OptionsMenu : MonoBehaviour
     void SetupResolutions()
     {
         resolutions = Screen.resolutions;
-        resolutionDropdown.ClearOptions();
         
-        List<string> options = new List<string>();
-        int currentResolutionIndex = 0;
-        
-        // Filtrar resoluciones duplicadas y mantener solo las más altas refresh rates
-        List<Resolution> uniqueResolutions = new List<Resolution>();
-        for (int i = 0; i < resolutions.Length; i++)
+        if (resolutionDropdown != null)
         {
-            bool found = false;
-            for (int j = 0; j < uniqueResolutions.Count; j++)
+            resolutionDropdown.ClearOptions();
+            
+            List<string> options = new List<string>();
+            int currentResolutionIndex = 0;
+            
+            // Filtrar resoluciones duplicadas y mantener solo las más altas refresh rates
+            List<Resolution> uniqueResolutions = new List<Resolution>();
+            for (int i = 0; i < resolutions.Length; i++)
             {
-                if (resolutions[i].width == uniqueResolutions[j].width && 
-                    resolutions[i].height == uniqueResolutions[j].height)
+                bool found = false;
+                for (int j = 0; j < uniqueResolutions.Count; j++)
                 {
-                    // Si encontramos la misma resolución, mantener la de mayor refresh rate
-                    if (resolutions[i].refreshRate > uniqueResolutions[j].refreshRate)
+                    if (resolutions[i].width == uniqueResolutions[j].width && 
+                        resolutions[i].height == uniqueResolutions[j].height)
                     {
-                        uniqueResolutions[j] = resolutions[i];
+                        // Si encontramos la misma resolución, mantener la de mayor refresh rate
+                        if (resolutions[i].refreshRateRatio.value > uniqueResolutions[j].refreshRateRatio.value)
+                        {
+                            uniqueResolutions[j] = resolutions[i];
+                        }
+                        found = true;
+                        break;
                     }
-                    found = true;
-                    break;
+                }
+                if (!found)
+                {
+                    uniqueResolutions.Add(resolutions[i]);
                 }
             }
-            if (!found)
-            {
-                uniqueResolutions.Add(resolutions[i]);
-            }
-        }
-        
-        resolutions = uniqueResolutions.ToArray();
-        
-        for (int i = 0; i < resolutions.Length; i++)
-        {
-            string option = resolutions[i].width + " x " + resolutions[i].height + " @ " + resolutions[i].refreshRate + "Hz";
-            options.Add(option);
             
-            // Encontrar la resolución actual
-            if (resolutions[i].width == Screen.currentResolution.width &&
-                resolutions[i].height == Screen.currentResolution.height)
+            resolutions = uniqueResolutions.ToArray();
+            
+            for (int i = 0; i < resolutions.Length; i++)
             {
-                currentResolutionIndex = i;
+                string option = resolutions[i].width + " x " + resolutions[i].height + " @ " + resolutions[i].refreshRateRatio.value + "Hz";
+                options.Add(option);
+                
+                // Encontrar la resolución actual
+                if (resolutions[i].width == Screen.currentResolution.width &&
+                    resolutions[i].height == Screen.currentResolution.height)
+                {
+                    currentResolutionIndex = i;
+                }
             }
+            
+            resolutionDropdown.AddOptions(options);
+            resolutionDropdown.value = currentResolutionIndex;
+            resolutionDropdown.RefreshShownValue();
         }
-        
-        resolutionDropdown.AddOptions(options);
-        resolutionDropdown.value = currentResolutionIndex;
-        resolutionDropdown.RefreshShownValue();
     }
     
     public void SetResolution(int resolutionIndex)
@@ -132,36 +161,64 @@ public class OptionsMenu : MonoBehaviour
         if (resolutionIndex >= 0 && resolutionIndex < resolutions.Length)
         {
             Resolution resolution = resolutions[resolutionIndex];
-            Screen.SetResolution(resolution.width, resolution.height, Screen.fullScreen);
             
-            // Guardar configuración globalmente
-            PlayerPrefs.SetInt("ResolutionIndex", resolutionIndex);
-            if (GlobalOptionsManager.Instance != null)
+            // Usar PersistentSettingsManager para mantener consistencia
+            if (PersistentSettingsManager.Instance != null)
             {
-                GlobalOptionsManager.Instance.SaveGlobalSettings(
-                    PlayerPrefs.GetFloat("Volume", 0.75f), 
-                    resolutionIndex, 
+                PersistentSettingsManager.Instance.SetResolution(
+                    resolution.width, 
+                    resolution.height, 
                     Screen.fullScreen
                 );
             }
+            else
+            {
+                // Fallback al método anterior
+                Screen.SetResolution(resolution.width, resolution.height, Screen.fullScreen);
+                PlayerPrefs.SetInt("ResolutionIndex", resolutionIndex);
+                
+                // Sincronizar con GlobalOptionsManager si existe
+                if (GlobalOptionsManager.Instance != null)
+                {
+                    GlobalOptionsManager.Instance.SaveGlobalSettings(
+                        PlayerPrefs.GetFloat("Volume", 0.75f), 
+                        resolutionIndex, 
+                        Screen.fullScreen
+                    );
+                }
+            }
             
-            DebugLog($"🖥️ Resolución cambiada a: {resolution.width}x{resolution.height}@{resolution.refreshRate}Hz");
+            DebugLog($"🖥️ Resolución cambiada a: {resolution.width}x{resolution.height}@{resolution.refreshRateRatio.value}Hz");
         }
     }
     
     public void SetFullscreen(bool isFullscreen)
     {
-        Screen.fullScreen = isFullscreen;
-        PlayerPrefs.SetInt("Fullscreen", isFullscreen ? 1 : 0);
-        
-        // Guardar configuración globalmente
-        if (GlobalOptionsManager.Instance != null)
+        // Usar PersistentSettingsManager para mantener consistencia
+        if (PersistentSettingsManager.Instance != null)
         {
-            GlobalOptionsManager.Instance.SaveGlobalSettings(
-                PlayerPrefs.GetFloat("Volume", 0.75f), 
-                PlayerPrefs.GetInt("ResolutionIndex", -1), 
+            var settings = PersistentSettingsManager.Instance.GetAllSettings();
+            PersistentSettingsManager.Instance.SetResolution(
+                settings.resolutionWidth,
+                settings.resolutionHeight,
                 isFullscreen
             );
+        }
+        else
+        {
+            // Fallback al método anterior
+            Screen.fullScreen = isFullscreen;
+            PlayerPrefs.SetInt("Fullscreen", isFullscreen ? 1 : 0);
+            
+            // Sincronizar con GlobalOptionsManager si existe
+            if (GlobalOptionsManager.Instance != null)
+            {
+                GlobalOptionsManager.Instance.SaveGlobalSettings(
+                    PlayerPrefs.GetFloat("Volume", 0.75f), 
+                    PlayerPrefs.GetInt("ResolutionIndex", -1), 
+                    isFullscreen
+                );
+            }
         }
         
         DebugLog($"🖥️ Pantalla completa: {isFullscreen}");
@@ -174,14 +231,20 @@ public class OptionsMenu : MonoBehaviour
     void SetupButtons()
     {
         // Configurar botones
-        backToGameButton.onClick.AddListener(BackToGame);
-        quitGameButton.onClick.AddListener(QuitGame);
-        applyButton.onClick.AddListener(ApplySettings);
+        if (backToGameButton != null)
+            backToGameButton.onClick.AddListener(BackToGame);
+        if (quitGameButton != null)
+            quitGameButton.onClick.AddListener(QuitGame);
+        if (applyButton != null)
+            applyButton.onClick.AddListener(ApplySettings);
         
         // Configurar sliders y dropdowns
-        volumeSlider.onValueChanged.AddListener(SetVolume);
-        resolutionDropdown.onValueChanged.AddListener(SetResolution);
-        fullscreenToggle.onValueChanged.AddListener(SetFullscreen);
+        if (volumeSlider != null)
+            volumeSlider.onValueChanged.AddListener(SetVolume);
+        if (resolutionDropdown != null)
+            resolutionDropdown.onValueChanged.AddListener(SetResolution);
+        if (fullscreenToggle != null)
+            fullscreenToggle.onValueChanged.AddListener(SetFullscreen);
     }
     
     public void ToggleOptionsMenu()
@@ -191,7 +254,8 @@ public class OptionsMenu : MonoBehaviour
         
         if (!isActive)
         {
-            // Abrir menú - pausar juego
+            // Abrir menú - pausar juego y cargar configuraciones actuales
+            LoadSettingsFromPersistentManager();
             PauseGame();
         }
         else
@@ -213,6 +277,10 @@ public class OptionsMenu : MonoBehaviour
         DebugLog("🚪 Cerrando juego...");
         
         // Guardar configuraciones antes de salir
+        if (PersistentSettingsManager.Instance != null)
+        {
+            PersistentSettingsManager.Instance.SaveAllSettings();
+        }
         PlayerPrefs.Save();
         
         #if UNITY_EDITOR
@@ -224,11 +292,20 @@ public class OptionsMenu : MonoBehaviour
     
     public void ApplySettings()
     {
-        // Las configuraciones se aplican automáticamente, pero guardamos todo
-        PlayerPrefs.Save();
-        DebugLog("💾 Configuraciones guardadas");
+        // Forzar guardado inmediato
+        if (PersistentSettingsManager.Instance != null)
+        {
+            PersistentSettingsManager.Instance.SaveAllSettings();
+            PersistentSettingsManager.Instance.ApplyAllSettings();
+        }
+        else
+        {
+            PlayerPrefs.Save();
+        }
         
-        // Mostrar feedback visual (opcional)
+        DebugLog("💾 Configuraciones aplicadas y guardadas");
+        
+        // Mostrar feedback visual
         StartCoroutine(ShowAppliedFeedback());
     }
     
@@ -263,18 +340,79 @@ public class OptionsMenu : MonoBehaviour
     
     #endregion
     
-    #region 💾 Settings Persistence
+    #region 💾 Settings Persistence Integration
     
-    void LoadSettings()
+    void LoadSettingsFromPersistentManager()
+    {
+        if (PersistentSettingsManager.Instance != null)
+        {
+            cachedSettings = PersistentSettingsManager.Instance.GetAllSettings();
+            UpdateUIFromSettings();
+        }
+        else
+        {
+            LoadSettingsFallback();
+        }
+    }
+    
+    void UpdateUIFromSettings()
+    {
+        if (cachedSettings == null) return;
+        
+        // Actualizar volumen
+        if (volumeSlider != null)
+        {
+            volumeSlider.value = cachedSettings.masterVolume;
+        }
+        if (volumeText != null)
+        {
+            volumeText.text = $"Volumen: {Mathf.RoundToInt(cachedSettings.masterVolume * 100)}%";
+        }
+        
+        // Actualizar pantalla completa
+        if (fullscreenToggle != null)
+        {
+            fullscreenToggle.isOn = cachedSettings.fullscreen;
+        }
+        
+        // Actualizar resolución
+        if (resolutionDropdown != null)
+        {
+            int resIndex = FindResolutionIndex(cachedSettings.resolutionWidth, cachedSettings.resolutionHeight);
+            if (resIndex >= 0)
+            {
+                resolutionDropdown.value = resIndex;
+            }
+        }
+        
+        DebugLog("🔄 UI actualizada con configuraciones persistentes");
+    }
+    
+    int FindResolutionIndex(int width, int height)
+    {
+        for (int i = 0; i < resolutions.Length; i++)
+        {
+            if (resolutions[i].width == width && resolutions[i].height == height)
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+    
+    void LoadSettingsFallback()
     {
         // Cargar volumen
         float savedVolume = PlayerPrefs.GetFloat("Volume", 0.75f);
-        volumeSlider.value = savedVolume;
-        SetVolume(savedVolume);
+        if (volumeSlider != null)
+        {
+            volumeSlider.value = savedVolume;
+            SetVolume(savedVolume);
+        }
         
         // Cargar resolución
         int savedResolution = PlayerPrefs.GetInt("ResolutionIndex", resolutions.Length - 1);
-        if (savedResolution < resolutions.Length)
+        if (savedResolution < resolutions.Length && resolutionDropdown != null)
         {
             resolutionDropdown.value = savedResolution;
             SetResolution(savedResolution);
@@ -282,10 +420,13 @@ public class OptionsMenu : MonoBehaviour
         
         // Cargar pantalla completa
         bool savedFullscreen = PlayerPrefs.GetInt("Fullscreen", 1) == 1;
-        fullscreenToggle.isOn = savedFullscreen;
-        SetFullscreen(savedFullscreen);
+        if (fullscreenToggle != null)
+        {
+            fullscreenToggle.isOn = savedFullscreen;
+            SetFullscreen(savedFullscreen);
+        }
         
-        DebugLog("💾 Configuraciones cargadas");
+        DebugLog("💾 Configuraciones cargadas (fallback)");
     }
     
     #endregion
@@ -294,14 +435,58 @@ public class OptionsMenu : MonoBehaviour
     
     System.Collections.IEnumerator ShowAppliedFeedback()
     {
-        string originalText = applyButton.GetComponentInChildren<TextMeshProUGUI>().text;
-        applyButton.GetComponentInChildren<TextMeshProUGUI>().text = "✅ ¡Aplicado!";
-        applyButton.interactable = false;
-        
-        yield return new WaitForSecondsRealtime(1.5f);
-        
-        applyButton.GetComponentInChildren<TextMeshProUGUI>().text = originalText;
-        applyButton.interactable = true;
+        if (applyButton != null)
+        {
+            TextMeshProUGUI buttonText = applyButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (buttonText != null)
+            {
+                string originalText = buttonText.text;
+                buttonText.text = "✅ ¡Aplicado!";
+                applyButton.interactable = false;
+                
+                yield return new WaitForSecondsRealtime(1.5f);
+                
+                buttonText.text = originalText;
+                applyButton.interactable = true;
+            }
+        }
+    }
+    
+    #endregion
+    
+    #region 🔄 Integration Methods
+    
+    /// <summary>
+    /// 🔗 Método para sincronizar con sistemas externos
+    /// </summary>
+    public void RefreshFromPersistentSettings()
+    {
+        LoadSettingsFromPersistentManager();
+    }
+    
+    /// <summary>
+    /// 📊 Obtener estado actual del menú
+    /// </summary>
+    public bool IsMenuOpen()
+    {
+        return optionsPanel != null && optionsPanel.activeSelf;
+    }
+    
+    /// <summary>
+    /// 🎮 Configurar referencia de AudioMixer automáticamente
+    /// </summary>
+    public void AutoSetupAudioMixer()
+    {
+        if (audioMixer == null && PersistentSettingsManager.Instance != null)
+        {
+            // Intentar obtener AudioMixer del PersistentSettingsManager
+            var psm = PersistentSettingsManager.Instance;
+            if (psm.masterAudioMixer != null)
+            {
+                audioMixer = psm.masterAudioMixer;
+                DebugLog("🎵 AudioMixer configurado automáticamente");
+            }
+        }
     }
     
     #endregion
@@ -321,7 +506,14 @@ public class OptionsMenu : MonoBehaviour
         
         GUI.Label(new Rect(10, 10, 200, 20), $"Paused: {isGamePaused}");
         GUI.Label(new Rect(10, 30, 200, 20), $"TimeScale: {Time.timeScale}");
-        GUI.Label(new Rect(10, 50, 200, 20), $"Volume: {volumeSlider.value:F2}");
+        if (volumeSlider != null)
+        {
+            GUI.Label(new Rect(10, 50, 200, 20), $"Volume: {volumeSlider.value:F2}");
+        }
+        if (cachedSettings != null)
+        {
+            GUI.Label(new Rect(10, 70, 200, 20), $"Persistent Volume: {cachedSettings.masterVolume:F2}");
+        }
     }
     
     #endregion

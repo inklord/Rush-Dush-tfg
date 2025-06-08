@@ -8,15 +8,19 @@ using Photon.Pun;
 public class LavaGameManager : MonoBehaviourPunCallbacks
 {
     [Header("Configuración del Juego de Lava")]
-    public float gameEndDelay = 2f;             // Tiempo antes de mostrar pantalla final
+    public float gameEndDelay = 2f;             // Tiempo antes de ir a FinalFracaso
     public bool endGameOnFirstLavaDeath = true; // Si terminar el juego con la primera muerte por lava
+    
+    [Header("🎯 Transición a FinalFracaso")]
+    public float failureTransitionDelay = 3f;   // Tiempo antes de ir a FinalFracaso
+    public bool goToFinalFracasoOnLavaDeath = true; // Si ir a FinalFracaso cuando toque lava
     
     [Header("UI del Juego")]
     public Text gameStatusText;                 // Texto de estado del juego
-    public GameObject gameOverPanel;            // Panel de Game Over
-    public Text gameOverText;                   // Texto del Game Over
-    public Button restartButton;                // Botón de reinicio
-    public Button exitButton;                   // Botón de salir
+    public GameObject gameOverPanel;            // Panel de Game Over (opcional)
+    public Text gameOverText;                   // Texto del Game Over (opcional)
+    public Button restartButton;                // Botón de reinicio (opcional)
+    public Button exitButton;                   // Botón de salir (opcional)
     
     [Header("Efectos Visuales")]
     public GameObject lavaDeathEffect;          // Efecto visual de muerte por lava
@@ -85,7 +89,7 @@ public class LavaGameManager : MonoBehaviourPunCallbacks
     
     private void SetupUI()
     {
-        // Configurar botones
+        // Configurar botones (opcional)
         if (restartButton != null)
         {
             restartButton.onClick.AddListener(RestartGame);
@@ -96,7 +100,7 @@ public class LavaGameManager : MonoBehaviourPunCallbacks
             exitButton.onClick.AddListener(ExitGame);
         }
         
-        // Ocultar panel de Game Over al inicio
+        // Ocultar panel de Game Over al inicio (si existe)
         if (gameOverPanel != null)
         {
             gameOverPanel.SetActive(false);
@@ -134,7 +138,14 @@ public class LavaGameManager : MonoBehaviourPunCallbacks
         PlayDeathSound();
         
         // ✅ SIEMPRE TERMINAR EL JUEGO cuando un Player toca lava
-        StartCoroutine(EndGameAfterDelay());
+        if (goToFinalFracasoOnLavaDeath)
+        {
+            StartCoroutine(TransitionToFinalFracaso());
+        }
+        else
+        {
+            StartCoroutine(EndGameAfterDelay());
+        }
     }
     
     private void CreateLavaDeathEffect(Vector3 position)
@@ -153,6 +164,70 @@ public class LavaGameManager : MonoBehaviourPunCallbacks
         if (gameOverSound != null && !gameOverSound.isPlaying)
         {
             gameOverSound.Play();
+        }
+    }
+    
+    /// <summary>
+    /// 🎯 NUEVA FUNCIONALIDAD: Transición directa a FinalFracaso
+    /// </summary>
+    private IEnumerator TransitionToFinalFracaso()
+    {
+        if (gameEnded)
+            yield break;
+        
+        gameEnded = true;
+        
+        if (enableDebugLogs)
+            Debug.Log($"💀 LavaGameManager: ¡Player tocó lava! Yendo a FinalFracaso en {failureTransitionDelay} segundos...");
+        
+        // Actualizar estado del juego
+        UpdateGameStatus();
+        
+        // Parar música de fondo con fade
+        if (backgroundMusic != null && backgroundMusic.isPlaying)
+        {
+            StartCoroutine(FadeOutMusic());
+        }
+        
+        // Esperar antes de hacer la transición
+        yield return new WaitForSeconds(failureTransitionDelay);
+        
+        // 🎯 IR A FINALFRACASO DIRECTAMENTE
+        GoToFinalFracasoScene();
+    }
+    
+    /// <summary>
+    /// 💀 Ir a la escena FinalFracaso (como las demás escenas por countdown)
+    /// </summary>
+    private void GoToFinalFracasoScene()
+    {
+        try
+        {
+            // Intentar usar SceneChange si existe
+            SceneChange sceneChanger = FindObjectOfType<SceneChange>();
+            
+            if (sceneChanger != null)
+            {
+                if (enableDebugLogs)
+                    Debug.Log("💀 LavaGameManager: Usando SceneChange.GoToEndingFailure() para FinalFracaso...");
+                
+                sceneChanger.GoToEndingFailure();
+            }
+            else
+            {
+                // Fallback: Cargar directamente con SceneManager
+                if (enableDebugLogs)
+                    Debug.Log("💀 LavaGameManager: SceneChange no encontrado, cargando FinalFracaso directamente...");
+                
+                SceneManager.LoadScene("FinalFracaso");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ LavaGameManager: Error al cargar FinalFracaso: {e.Message}");
+            
+            // Último recurso: mostrar panel de Game Over tradicional
+            ShowGameOverScreen();
         }
     }
     
@@ -175,7 +250,7 @@ public class LavaGameManager : MonoBehaviourPunCallbacks
         // Esperar antes de mostrar pantalla final
         yield return new WaitForSeconds(gameEndDelay);
         
-        // Mostrar pantalla de Game Over
+        // Mostrar pantalla de Game Over tradicional
         ShowGameOverScreen();
     }
     
@@ -199,6 +274,9 @@ public class LavaGameManager : MonoBehaviourPunCallbacks
         backgroundMusic.volume = startVolume; // Restaurar volumen original
     }
     
+    /// <summary>
+    /// ⚠️ Panel de Game Over tradicional (solo si falla la transición a FinalFracaso)
+    /// </summary>
     private void ShowGameOverScreen()
     {
         if (gameOverPanel != null)
@@ -215,7 +293,7 @@ public class LavaGameManager : MonoBehaviourPunCallbacks
         }
         
         if (enableDebugLogs)
-            Debug.Log($"LavaGameManager: {gameOverMessage}");
+            Debug.Log($"⚠️ LavaGameManager: Mostrando Game Over tradicional: {gameOverMessage}");
         
         // Opcional: Pausar el juego
         // Time.timeScale = 0f;
@@ -243,7 +321,7 @@ public class LavaGameManager : MonoBehaviourPunCallbacks
         {
             if (lavaDeathOccurred)
             {
-                gameStatusText.text = $"¡GAME OVER! Player tocó la lava";
+                gameStatusText.text = $"💀 ¡FRACASO! Player tocó la lava - Yendo a FinalFracaso...";
                 gameStatusText.color = Color.red;
             }
             else
@@ -284,6 +362,20 @@ public class LavaGameManager : MonoBehaviourPunCallbacks
         #endif
     }
     
+    /// <summary>
+    /// 🎯 Nuevo método: Forzar ir a FinalFracaso (para testing o uso externo)
+    /// </summary>
+    public void ForceGoToFinalFracaso()
+    {
+        if (!gameEnded)
+        {
+            if (enableDebugLogs)
+                Debug.Log("💀 LavaGameManager: Forzando transición a FinalFracaso...");
+            
+            StartCoroutine(TransitionToFinalFracaso());
+        }
+    }
+    
     public bool IsGameEnded()
     {
         return gameEnded;
@@ -316,11 +408,20 @@ public class LavaGameManager : MonoBehaviourPunCallbacks
     // Métodos de testing
     private void Update()
     {
-        // TEST: Forzar fin de juego con tecla G
+        // TEST: Forzar ir a FinalFracaso con tecla F
+        if (Input.GetKeyDown(KeyCode.F))
+        {
+            if (enableDebugLogs)
+                Debug.Log("💀 LavaGameManager: TEST - Forzando FinalFracaso con tecla F");
+            
+            ForceGoToFinalFracaso();
+        }
+        
+        // TEST: Forzar fin de juego tradicional con tecla G
         if (Input.GetKeyDown(KeyCode.G))
         {
             if (enableDebugLogs)
-                Debug.Log("LavaGameManager: TEST - Forzando fin de juego");
+                Debug.Log("LavaGameManager: TEST - Forzando fin de juego tradicional");
             
             ForceEndGame();
         }
@@ -351,7 +452,8 @@ public class LavaGameManager : MonoBehaviourPunCallbacks
             Debug.Log($"Players víctimas de lava: {lavaVictims.Count}");
             Debug.Log($"Juego terminado: {gameEnded}");
             Debug.Log($"Muerte por lava ocurrió: {lavaDeathOccurred}");
-            Debug.Log("NOTA: Solo Players terminan el juego, IAs son ignoradas");
+            Debug.Log($"Ir a FinalFracaso habilitado: {goToFinalFracasoOnLavaDeath}");
+            Debug.Log("TECLAS: F(FinalFracaso) G(GameOver) V(Kill) I(Debug)");
         }
     }
     
@@ -360,13 +462,14 @@ public class LavaGameManager : MonoBehaviourPunCallbacks
     {
         if (enableDebugLogs && !gameEnded)
         {
-            GUI.Box(new Rect(10, 100, 250, 120), "");
-            GUI.Label(new Rect(15, 105, 240, 20), $"Lava Game Manager");
+            GUI.Box(new Rect(10, 100, 250, 140), "");
+            GUI.Label(new Rect(15, 105, 240, 20), $"🔥 Lava Game Manager");
             GUI.Label(new Rect(15, 125, 240, 20), $"Players: {allPlayers.Count}");
             GUI.Label(new Rect(15, 145, 240, 20), $"Víctimas Lava: {lavaVictims.Count}");
             GUI.Label(new Rect(15, 165, 240, 20), $"Juego Activo: {!gameEnded}");
-            GUI.Label(new Rect(15, 185, 240, 20), $"Solo Players terminan juego");
-            GUI.Label(new Rect(15, 205, 240, 20), $"Teclas: G(End) V(Kill) I(Debug)");
+            GUI.Label(new Rect(15, 185, 240, 20), $"FinalFracaso: {goToFinalFracasoOnLavaDeath}");
+            GUI.Label(new Rect(15, 205, 240, 20), $"Solo Players terminan juego");
+            GUI.Label(new Rect(15, 225, 240, 20), $"F(FinalFracaso) G(End) V(Kill) I(Debug)");
         }
     }
 } 

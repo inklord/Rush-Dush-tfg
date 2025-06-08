@@ -26,6 +26,15 @@ TagManager:
   - Vuelta
   - PlataformaMortal
   - Cilindro
+  - SpinningHammer
+  - MovingObstacle
+  - Bouncer
+  - Pusher
+  - SpawnPoint
+  - EnemyAI
+  - Enemy
+  - Timer
+  - RemotePlayer
   layers:
   - Default
   - TransparentFX

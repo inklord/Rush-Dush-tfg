@@ -2,12 +2,18 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
     [Header("Configuración del Juego")]
     public float fallHeightLimit = -50f;        // Altura bajo la cual se considera "caído"
     public float checkInterval = 1f;            // Frecuencia de verificación de jugadores caídos
+    
+    [Header("🎯 Configuración Hexagonia")]
+    public bool isHexagoniaLevel = false;       // Si este GameManager es para Hexagonia
+    public float hexagoniaTimerDuration = 180f; // 3 minutos para Hexagonia
+    public Text hexagoniaTimerText;             // UI Text para mostrar timer de Hexagonia
     
     [Header("UI del Contador")]
     public Text playersCountText;               // Texto UI para mostrar contador
@@ -22,6 +28,10 @@ public class GameManager : MonoBehaviour
     private List<GameObject> eliminatedPlayers = new List<GameObject>();
     private int initialPlayerCount;
     private bool gameEnded = false;
+    
+    // Variables para Hexagonia
+    private float hexagoniaTimeRemaining;
+    private bool hexagoniaTimerStarted = false;
     
     // Singleton para fácil acceso
     public static GameManager Instance;
@@ -38,13 +48,154 @@ public class GameManager : MonoBehaviour
         {
             Destroy(gameObject);
         }
+        
+        // Auto-detectar si estamos en Hexagonia
+        if (SceneManager.GetActiveScene().name == "Hexagonia")
+        {
+            isHexagoniaLevel = true;
+            if (enableDebugLogs)
+                Debug.Log("🔵 GameManager: Detectado nivel Hexagonia - Timer de 3 minutos activado");
+        }
     }
     
     private void Start()
     {
         InitializePlayerTracking();
         StartCoroutine(CheckFallenPlayers());
+        
+        // Inicializar timer de Hexagonia si corresponde
+        if (isHexagoniaLevel)
+        {
+            InitializeHexagoniaTimer();
+        }
+        
         UpdateUI();
+    }
+    
+    private void InitializeHexagoniaTimer()
+    {
+        hexagoniaTimeRemaining = hexagoniaTimerDuration;
+        hexagoniaTimerStarted = true;
+        
+        if (enableDebugLogs)
+            Debug.Log($"🔵 GameManager: Timer de Hexagonia iniciado - {hexagoniaTimerDuration} segundos ({hexagoniaTimerDuration/60f:F1} minutos)");
+    }
+    
+    private void Update()
+    {
+        // Solo para Hexagonia: Actualizar timer
+        if (isHexagoniaLevel && hexagoniaTimerStarted && !gameEnded)
+        {
+            UpdateHexagoniaTimer();
+        }
+    }
+    
+    private void UpdateHexagoniaTimer()
+    {
+        hexagoniaTimeRemaining -= Time.deltaTime;
+        
+        // Actualizar UI del timer
+        if (hexagoniaTimerText != null)
+        {
+            int minutes = (int)(hexagoniaTimeRemaining / 60);
+            int seconds = (int)(hexagoniaTimeRemaining % 60);
+            
+            if (hexagoniaTimeRemaining > 30f)
+            {
+                hexagoniaTimerText.text = $"{minutes}:{seconds:D2}";
+                hexagoniaTimerText.color = Color.white;
+            }
+            else if (hexagoniaTimeRemaining > 10f)
+            {
+                hexagoniaTimerText.text = $"<color=yellow>{minutes}:{seconds:D2}</color>";
+            }
+            else if (hexagoniaTimeRemaining > 0f)
+            {
+                hexagoniaTimerText.text = $"<color=red>{seconds}</color>";
+            }
+            else
+            {
+                hexagoniaTimerText.text = "<color=red>¡TIEMPO!</color>";
+            }
+        }
+        
+        // ⏰ TIEMPO AGOTADO - Los supervivientes ganan
+        if (hexagoniaTimeRemaining <= 0f)
+        {
+            OnHexagoniaTimeUp();
+        }
+    }
+    
+    /// <summary>
+    /// 🎯 Se acabó el tiempo en Hexagonia - Los supervivientes ganan
+    /// </summary>
+    private void OnHexagoniaTimeUp()
+    {
+        if (gameEnded) return;
+        
+        gameEnded = true;
+        hexagoniaTimerStarted = false;
+        
+        if (enableDebugLogs)
+            Debug.Log($"🔵 GameManager: ¡TIEMPO AGOTADO! Supervivientes: {activePlayers.Count}");
+        
+        if (activePlayers.Count > 0)
+        {
+            // Los supervivientes ganan
+            ShowHexagoniaTimeUpVictory();
+        }
+        else
+        {
+            // Nadie sobrevivió
+            ShowDraw();
+        }
+    }
+    
+    private void ShowHexagoniaTimeUpVictory()
+    {
+        if (winPanel != null)
+        {
+            winPanel.SetActive(true);
+        }
+        
+        if (winnerText != null)
+        {
+            if (activePlayers.Count == 1)
+            {
+                winnerText.text = $"¡{activePlayers[0].name} Sobrevivió 3 Minutos!";
+            }
+            else
+            {
+                winnerText.text = $"¡{activePlayers.Count} Jugadores Sobrevivieron!";
+            }
+        }
+        
+        if (enableDebugLogs)
+            Debug.Log($"🔵 GameManager: Victoria por tiempo - {activePlayers.Count} supervivientes");
+        
+        // Transición a escena de éxito después de un delay
+        StartCoroutine(TransitionToSuccessAfterDelay());
+    }
+    
+    private IEnumerator TransitionToSuccessAfterDelay()
+    {
+        yield return new WaitForSeconds(3f);
+        
+        // Buscar SceneChange component
+        SceneChange sceneChanger = FindObjectOfType<SceneChange>();
+        
+        if (sceneChanger != null)
+        {
+            if (enableDebugLogs)
+                Debug.Log("🔵 GameManager: Transicionando a escena de éxito...");
+            
+            sceneChanger.GoToEndingSuccess();
+        }
+        else
+        {
+            // Fallback
+            SceneManager.LoadScene("Ending");
+        }
     }
     
     private void InitializePlayerTracking()
@@ -155,30 +306,40 @@ public class GameManager : MonoBehaviour
     {
         if (playersCountText != null)
         {
-            playersCountText.text = $"Jugadores: {activePlayers.Count}";
+            // Solo mostrar información de jugadores (sin tiempo)
+            // El tiempo ya se muestra en hexagoniaTimerText separadamente
+            playersCountText.text = $"{eliminatedPlayers.Count}/{initialPlayerCount}";
         }
         
         // Mostrar en consola también para debug
         if (enableDebugLogs)
         {
-            Debug.Log($"GameManager: Jugadores activos: {activePlayers.Count}/{initialPlayerCount}");
+            if (isHexagoniaLevel)
+            {
+                Debug.Log($"🔵 GameManager: Jugadores activos: {activePlayers.Count}/{initialPlayerCount} | Tiempo: {hexagoniaTimeRemaining:F1}s");
+            }
+            else
+            {
+                Debug.Log($"GameManager: Jugadores activos: {activePlayers.Count}/{initialPlayerCount}");
+            }
         }
     }
     
     private void CheckWinCondition()
     {
+        // ✅ Condición 1: Último jugador en pie (siempre)
         if (activePlayers.Count <= 1 && !gameEnded)
         {
             gameEnded = true;
             
             if (activePlayers.Count == 1)
             {
-                // Hay un ganador
+                // Hay un ganador por eliminación
                 GameObject winner = activePlayers[0];
                 if (enableDebugLogs)
-                    Debug.Log($"GameManager: ¡{winner.name} ha ganado el juego!");
+                    Debug.Log($"🔵 GameManager: ¡{winner.name} es el último en pie!");
                 
-                ShowWinner(winner);
+                ShowLastPlayerStandingWinner(winner);
             }
             else
             {
@@ -189,9 +350,12 @@ public class GameManager : MonoBehaviour
                 ShowDraw();
             }
         }
+        
+        // ✅ Para niveles NO-Hexagonia: La condición de arriba es suficiente
+        // ✅ Para Hexagonia: La condición de tiempo se maneja en UpdateHexagoniaTimer()
     }
     
-    private void ShowWinner(GameObject winner)
+    private void ShowLastPlayerStandingWinner(GameObject winner)
     {
         if (winPanel != null)
         {
@@ -200,11 +364,24 @@ public class GameManager : MonoBehaviour
         
         if (winnerText != null)
         {
-            winnerText.text = $"¡{winner.name} Ganó!";
+            if (isHexagoniaLevel)
+            {
+                winnerText.text = $"¡{winner.name} es el Último en Pie!";
+            }
+            else
+            {
+                winnerText.text = $"¡{winner.name} Ganó!";
+            }
         }
         
-        // Opcional: Pausar el juego
-        // Time.timeScale = 0f;
+        // Detener timer de Hexagonia si está activo
+        if (isHexagoniaLevel)
+        {
+            hexagoniaTimerStarted = false;
+        }
+        
+        // Transición a escena de éxito
+        StartCoroutine(TransitionToSuccessAfterDelay());
     }
     
     private void ShowDraw()
@@ -217,6 +394,12 @@ public class GameManager : MonoBehaviour
         if (winnerText != null)
         {
             winnerText.text = "¡Empate!";
+        }
+        
+        // Detener timer de Hexagonia si está activo
+        if (isHexagoniaLevel)
+        {
+            hexagoniaTimerStarted = false;
         }
     }
     
@@ -232,6 +415,12 @@ public class GameManager : MonoBehaviour
             winPanel.SetActive(false);
         }
         
+        // Reiniciar timer de Hexagonia
+        if (isHexagoniaLevel)
+        {
+            InitializeHexagoniaTimer();
+        }
+        
         // Recargar la escena o reinicializar
         InitializePlayerTracking();
         
@@ -244,8 +433,6 @@ public class GameManager : MonoBehaviour
         if (player != null && activePlayers.Contains(player))
         {
             EliminatePlayer(player);
-            UpdateUI();
-            CheckWinCondition();
         }
     }
     
@@ -261,19 +448,45 @@ public class GameManager : MonoBehaviour
     
     public List<GameObject> GetActivePlayers()
     {
-        return new List<GameObject>(activePlayers); // Retornar copia para evitar modificaciones externas
+        return new List<GameObject>(activePlayers);
     }
     
-    // Método para mostrar estadísticas en UI de debug
+    /// <summary>
+    /// 🔵 Obtener tiempo restante en Hexagonia
+    /// </summary>
+    public float GetHexagoniaTimeRemaining()
+    {
+        return hexagoniaTimeRemaining;
+    }
+    
+    /// <summary>
+    /// 🔵 Verificar si el timer de Hexagonia está activo
+    /// </summary>
+    public bool IsHexagoniaTimerActive()
+    {
+        return isHexagoniaLevel && hexagoniaTimerStarted;
+    }
+    
     private void OnGUI()
     {
-        if (enableDebugLogs)
+        if (enableDebugLogs && !gameEnded)
         {
-            GUI.Box(new Rect(10, 10, 200, 80), "");
-            GUI.Label(new Rect(15, 15, 190, 20), $"Jugadores Activos: {activePlayers.Count}");
-            GUI.Label(new Rect(15, 35, 190, 20), $"Eliminados: {eliminatedPlayers.Count}");
-            GUI.Label(new Rect(15, 55, 190, 20), $"Total Inicial: {initialPlayerCount}");
-            GUI.Label(new Rect(15, 75, 190, 20), $"Juego Terminado: {gameEnded}");
+            if (isHexagoniaLevel)
+            {
+                GUI.Box(new Rect(10, 10, 300, 120), "");
+                GUI.Label(new Rect(15, 15, 290, 20), $"🔵 HEXAGONIA GameManager");
+                GUI.Label(new Rect(15, 35, 290, 20), $"Jugadores activos: {activePlayers.Count}");
+                GUI.Label(new Rect(15, 55, 290, 20), $"Tiempo restante: {hexagoniaTimeRemaining:F1}s");
+                GUI.Label(new Rect(15, 75, 290, 20), $"Timer activo: {hexagoniaTimerStarted}");
+                GUI.Label(new Rect(15, 95, 290, 20), $"Condición: Último en pie O 3 minutos");
+            }
+            else
+            {
+                GUI.Box(new Rect(10, 10, 250, 80), "");
+                GUI.Label(new Rect(15, 15, 240, 20), $"GameManager");
+                GUI.Label(new Rect(15, 35, 240, 20), $"Jugadores: {activePlayers.Count}");
+                GUI.Label(new Rect(15, 55, 240, 20), $"Juego activo: {!gameEnded}");
+            }
         }
     }
 } 

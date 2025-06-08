@@ -2,10 +2,12 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using Photon.Pun;
 
 // Controlador principal del jugador - Se mueve izquierda/derecha y salta.
 // Solo salta cuando presiona la tecla de salto.
-public class LHS_MainPlayer : MonoBehaviour
+// Adaptado para Photon Multiplayer
+public class LHS_MainPlayer : MonoBehaviourPun, IPunObservable
 {
     
     // Velocidad de movimiento
@@ -65,6 +67,13 @@ public class LHS_MainPlayer : MonoBehaviour
     // Variables para debug
     private Vector3 lastPosition;
     private float lastGroundDistance = 0f;
+    
+    // Variables de red (Photon)
+    private Vector3 networkPosition;
+    private Quaternion networkRotation;
+    private float networkSpeed;
+    private bool networkGrounded;
+    private bool networkJumping;
 
     // Se llama antes del primer frame
     void Awake()
@@ -72,9 +81,16 @@ public class LHS_MainPlayer : MonoBehaviour
         rigid = GetComponent<Rigidbody>();
         anim = GetComponentInChildren<Animator>();
 
-        // Activar barra de información
-        bar.SetActive(true);
-        bar.transform.position = Camera.main.WorldToScreenPoint(transform.position + new Vector3(0, 3.35f, 0));
+        // Activar barra de información solo si está asignada
+        if (bar != null)
+        {
+            bar.SetActive(true);
+            bar.transform.position = Camera.main.WorldToScreenPoint(transform.position + new Vector3(0, 3.35f, 0));
+        }
+        else if (showDebugInfo)
+        {
+            Debug.LogWarning($"⚠️ {gameObject.name}: Bar no asignado - continuando sin UI");
+        }
     }
 
     private void Start()
@@ -85,9 +101,43 @@ public class LHS_MainPlayer : MonoBehaviour
 
     private void Update()
     {
-        CheckGrounded();
-        HandleJumpInput();
-        UpdateAnimations();
+        // 🚨 CRÍTICO: Solo el owner puede controlar su jugador
+        bool iAmTheOwner = photonView == null || photonView.IsMine;
+        
+        if (!iAmTheOwner)
+        {
+            // ❌ NO SOY EL OWNER - Solo interpolar movimiento remoto
+            InterpolateNetworkMovement();
+            
+            // 🚫 BLOQUEAR TODO INPUT para jugadores remotos
+            if (showDebugInfo && Input.anyKeyDown)
+            {
+                Debug.Log($"🚫 {gameObject.name} es REMOTO - Input BLOQUEADO! (PhotonView.IsMine = false)");
+            }
+            return; // ⭐ SALIR INMEDIATAMENTE
+        }
+        
+        // ✅ SOY EL OWNER - Controlar normalmente
+        if (showDebugInfo && Input.GetKeyDown(KeyCode.F3))
+        {
+            Debug.Log($"✅ {gameObject.name} es MÍO - Controlando! (PhotonView.IsMine = {photonView?.IsMine ?? true})");
+        }
+        
+        // Verificar si tenemos PhotonView
+        if (photonView == null)
+        {
+            // Modo single player - comportamiento normal
+            CheckGrounded();
+            HandleJumpInput();
+            UpdateAnimations();
+        }
+        else if (photonView.IsMine)
+        {
+            // Solo el dueño del personaje controla el input
+            CheckGrounded();
+            HandleJumpInput();
+            UpdateAnimations();
+        }
     }
 
     void CheckGrounded()
@@ -250,12 +300,35 @@ public class LHS_MainPlayer : MonoBehaviour
 
     private void FixedUpdate()
     {
-        FreezeRotation();
-        GetInput();
-        Move();
-        Turn();
+        // 🚨 CRÍTICO: Solo el owner puede mover su jugador
+        bool iAmTheOwner = photonView == null || photonView.IsMine;
         
-        Expression();
+        if (!iAmTheOwner)
+        {
+            // ❌ NO SOY EL OWNER - NO hacer nada
+            return; // ⭐ SALIR INMEDIATAMENTE - Los remotos no se mueven desde aquí
+        }
+        
+        // ✅ SOY EL OWNER - Mover normalmente
+        // Verificar si tenemos PhotonView
+        if (photonView == null)
+        {
+            // Modo single player - comportamiento normal
+            FreezeRotation();
+            GetInput();
+            Move();
+            Turn();
+            Expression();
+        }
+        else if (photonView.IsMine)
+        {
+            // Solo el dueño controla el movimiento
+            FreezeRotation();
+            GetInput();
+            Move();
+            Turn();
+            Expression();
+        }
     }
 
     void FreezeRotation()
@@ -304,10 +377,47 @@ public class LHS_MainPlayer : MonoBehaviour
     // Maneja diferentes tipos de colisiones + sonidos / partículas 
     private void OnCollisionEnter(Collision collision)
     {
+        // Solo procesar colisiones para el owner (o si no hay PhotonView)
+        if (photonView != null && !photonView.IsMine) return;
+
+        // --- NUEVO: Manejo especial para puertas ---
+        if (collision.gameObject.CompareTag("Puerta"))
+        {
+            Puerta puerta = collision.gameObject.GetComponent<Puerta>();
+            if (puerta != null)
+            {
+                // Si es real y NO está rota, rebota y cancela salto
+                if (puerta.esReal && !puerta.EstaRota())
+                {
+                    // Rebote hacia atrás
+                    Vector3 rebote = -transform.forward * bounceForce;
+                    rigid.velocity = Vector3.zero;
+                    rigid.AddForce(rebote + Vector3.up * 2f, ForceMode.Impulse);
+
+                    // Efectos
+                    if (mysfx != null && bouncefx != null)
+                        mysfx.PlayOneShot(bouncefx);
+                    if (bounce != null)
+                    {
+                        bounce.Play();
+                        bounce.transform.position = collision.contacts[0].point;
+                    }
+
+                    // Cancelar salto
+                    canJump = false;
+                    isGrounded = false;
+                    anim.SetBool("isJump", false);
+
+                    Debug.Log("🚪 Colisión con puerta real NO rota: rebote aplicado");
+                    return; // No procesar más
+                }
+                // Si la puerta es real y ya está rota, dejar pasar (no hacer nada especial)
+            }
+        }
+
         // Verificar si es suelo para forzar actualización
         if (collision.gameObject.layer == 0 || collision.gameObject.tag == "Floor" || collision.gameObject.tag == "Platform")
         {
-            // Forzar verificación de suelo en el próximo frame
             StartCoroutine(ForceGroundCheck());
         }
 
@@ -315,16 +425,43 @@ public class LHS_MainPlayer : MonoBehaviour
         HandleObstacleCollision(collision.gameObject, collision.contacts[0].point);
     }
 
-    /// <summary>
-    /// 🎯 Manejo de triggers (para objetos configurados como Trigger)
-    /// </summary>
     private void OnTriggerEnter(Collider other)
     {
+        // Solo procesar triggers para el owner (o si no hay PhotonView)
+        if (photonView != null && !photonView.IsMine) return;
+
+        // --- NUEVO: Manejo especial para puertas (por si alguna puerta es trigger) ---
+        if (other.CompareTag("Puerta"))
+        {
+            Puerta puerta = other.GetComponent<Puerta>();
+            if (puerta != null && puerta.esReal && !puerta.EstaRota())
+            {
+                // Rebote hacia atrás
+                Vector3 rebote = -transform.forward * bounceForce;
+                rigid.velocity = Vector3.zero;
+                rigid.AddForce(rebote + Vector3.up * 2f, ForceMode.Impulse);
+
+                if (mysfx != null && bouncefx != null)
+                    mysfx.PlayOneShot(bouncefx);
+                if (bounce != null)
+                {
+                    bounce.Play();
+                    bounce.transform.position = other.transform.position;
+                }
+
+                canJump = false;
+                isGrounded = false;
+                anim.SetBool("isJump", false);
+
+                Debug.Log("🚪 Trigger con puerta real NO rota: rebote aplicado");
+                return;
+            }
+        }
+
         Debug.Log($"🎯 TRIGGER detectado: {other.name} con tag '{other.tag}'");
-        
-        // Usar transform.position como punto de contacto para triggers
         HandleObstacleCollision(other.gameObject, other.transform.position);
     }
+
 
     /// <summary>
     /// 🚧 Sistema unificado de manejo de colisiones con obstáculos
@@ -443,10 +580,19 @@ public class LHS_MainPlayer : MonoBehaviour
         }
         
         // Activar shake de cámara más intenso
-        var camera = FindObjectOfType<MovimientoCamaraNuevo>();
-        if (camera != null)
+        if (photonView != null)
         {
-            camera.ShakeCamera(1.0f, 2.5f); // Shake más intenso y duradero
+            // Modo multiplayer - usar RPC
+            photonView.RPC("NetworkShakeCamera", RpcTarget.All, 1.0f, 2.5f);
+        }
+        else
+        {
+            // Modo single player - shake directo
+            var camera = FindObjectOfType<MovimientoCamaraSimple>();
+            if (camera != null)
+            {
+                camera.ShakeCamera(1.0f, 2.5f);
+            }
         }
     }
 
@@ -598,13 +744,9 @@ public class LHS_MainPlayer : MonoBehaviour
     // Visualizar el raycast en el editor
     void OnDrawGizmosSelected()
     {
-        if (!Application.isPlaying) return;
-        
-        // Configurar colores
-        Gizmos.color = isGrounded ? Color.green : Color.red;
-        
         // Raycast principal
         Vector3 rayStart = transform.position + Vector3.up * 0.1f;
+        Gizmos.color = isGrounded ? Color.green : Color.red;
         Gizmos.DrawLine(rayStart, rayStart + Vector3.down * groundCheckDistance);
         
         // Raycasts adicionales
@@ -616,32 +758,264 @@ public class LHS_MainPlayer : MonoBehaviour
             rayStart + Vector3.right * offset
         };
         
-        Gizmos.color = isGrounded ? Color.green : Color.yellow;
+        Gizmos.color = Color.blue;
         foreach (Vector3 point in checkPoints)
         {
             Gizmos.DrawLine(point, point + Vector3.down * groundCheckDistance);
         }
         
-        // Mostrar punto final del raycast principal
-        Gizmos.color = isGrounded ? Color.green : Color.red;
-        Gizmos.DrawWireSphere(rayStart + Vector3.down * lastGroundDistance, 0.1f);
+        // Distancia actual al suelo
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(transform.position + Vector3.down * lastGroundDistance, 0.1f);
         
-        // Área de detección
-        Gizmos.color = Color.blue;
-        Gizmos.DrawWireCube(transform.position, new Vector3(offset * 2, 0.1f, offset * 2));
-
-        // Mostrar estado de salto
-        if (canJump)
+        // Estado del jugador (solo en editor)
+        #if UNITY_EDITOR
+        if (showDebugInfo)
         {
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawWireSphere(transform.position + Vector3.up * 2f, 0.3f);
+            string debugText = $"Grounded: {isGrounded}\nCanJump: {canJump}\nDistance: {lastGroundDistance:F2}";
+            UnityEditor.Handles.Label(transform.position + Vector3.up * 2, debugText);
+        }
+        #endif
+    }
+
+    #region Network Compatibility Methods
+    
+    /// <summary>
+    /// 🌍 Verificar si el jugador está en el suelo (para NetworkPlayerController)
+    /// </summary>
+    public bool IsGrounded()
+    {
+        return isGrounded;
+    }
+    
+    /// <summary>
+    /// 🔄 Reiniciar estado del jugador (para NetworkPlayerController)
+    /// </summary>
+    public void ResetPlayerState()
+    {
+        // Reiniciar variables de movimiento
+        hAxis = 0f;
+        vAxis = 0f;
+        moveVec = Vector3.zero;
+        
+        // Reiniciar estado de salto
+        jumpRequested = false;
+        canJump = true;
+        isGrounded = false;
+        wasGrounded = false;
+        
+        // Reiniciar tiempos
+        lastGroundedTime = Time.time;
+        lastJumpTime = 0f;
+        
+        // Reiniciar rigidbody
+        if (rigid != null)
+        {
+            rigid.velocity = Vector3.zero;
+            rigid.angularVelocity = Vector3.zero;
+        }
+        
+        // Reiniciar animaciones
+        if (anim != null)
+        {
+            anim.SetFloat("Speed", 0f);
+            anim.SetBool("isJump", false);
+            anim.SetBool("isMove", false);
+        }
+        
+        Debug.Log("🔄 Estado del jugador reiniciado");
+    }
+    
+    /// <summary>
+    /// 🎮 Obtener estado de velocidad actual (para animaciones de red)
+    /// </summary>
+    public float GetCurrentSpeed()
+    {
+        return rigid != null ? rigid.velocity.magnitude : 0f;
+    }
+    
+    /// <summary>
+    /// 🎯 Forzar eliminación del jugador (para sistemas multijugador)
+    /// </summary>
+    public void ForceElimination()
+    {
+        // Verificar si hay NetworkPlayerController
+        NetworkPlayerController networkController = GetComponent<NetworkPlayerController>();
+        if (networkController != null)
+        {
+            networkController.EliminateFromNetwork();
+        }
+        else
+        {
+            // Fallback para modo single player
+            Debug.Log($"💀 Jugador {gameObject.name} eliminado (modo single player)");
+            gameObject.SetActive(false);
         }
     }
+    
+    /// <summary>
+    /// 📊 Obtener información de debug del jugador
+    /// </summary>
+    public string GetPlayerDebugInfo()
+    {
+        return $"Player: {gameObject.name}\n" +
+               $"Position: {transform.position}\n" +
+               $"Grounded: {isGrounded}\n" +
+               $"CanJump: {canJump}\n" +
+               $"Velocity: {(rigid != null ? rigid.velocity : Vector3.zero)}\n" +
+               $"Speed: {GetCurrentSpeed():F2}";
+    }
+    
+    #endregion
+    
+    #region Photon Network Methods
+    
+    /// <summary>
+    /// 🌐 Interpolación MEJORADA para jugadores remotos
+    /// </summary>
+    void InterpolateNetworkMovement()
+    {
+        // Verificar que tenemos datos válidos
+        if (networkPosition == Vector3.zero && networkRotation == Quaternion.identity)
+        {
+            return; // No interpolar sin datos válidos
+        }
+        
+        // Calcular distancia para detectar teleport
+        float distance = Vector3.Distance(transform.position, networkPosition);
+        
+        // Si la distancia es muy grande, teleportear en lugar de interpolar
+        if (distance > 10f)
+        {
+            transform.position = networkPosition;
+            transform.rotation = networkRotation;
+            
+            if (showDebugInfo)
+            {
+                Debug.Log($"🌐 {gameObject.name} TELEPORT: Distancia={distance:F1}");
+            }
+        }
+        else
+        {
+            // Interpolación suave adaptativa
+            float posLerpSpeed = Mathf.Clamp(distance * 2f, 5f, 20f); // Velocidad basada en distancia
+            float rotLerpSpeed = 15f;
+            
+            // Interpolación con smoothing mejorado
+            transform.position = Vector3.Lerp(transform.position, networkPosition, Time.deltaTime * posLerpSpeed);
+            transform.rotation = Quaternion.Lerp(transform.rotation, networkRotation, Time.deltaTime * rotLerpSpeed);
+        }
+        
+        // Actualizar animaciones con filtrado
+        if (anim != null)
+        {
+            // Suavizar cambios de velocidad para evitar jitter
+            float currentAnimSpeed = anim.GetFloat("Speed");
+            float smoothedSpeed = Mathf.Lerp(currentAnimSpeed, networkSpeed, Time.deltaTime * 5f);
+            
+            anim.SetFloat("Speed", smoothedSpeed);
+            anim.SetBool("isJump", networkJumping);
+            anim.SetBool("isMove", smoothedSpeed > 0.1f);
+            anim.SetBool("isGrounded", networkGrounded);
+        }
+        
+        // Debug cada 2 segundos
+        if (showDebugInfo && Time.time % 2f < 0.1f)
+        {
+            Debug.Log($"🌐 {gameObject.name} INTERPOLANDO: Pos={transform.position:F1} → {networkPosition:F1} | Dist={distance:F2}");
+        }
+    }
+    
+    /// <summary>
+    /// 📡 Sincronización MEJORADA de datos con Photon
+    /// </summary>
+    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
+    {
+        if (rigid == null) return; // Verificación de seguridad
+        
+        if (stream.IsWriting)
+        {
+            // ✅ SOY EL OWNER - Enviar mis datos
+            stream.SendNext(transform.position);
+            stream.SendNext(transform.rotation);
+            stream.SendNext(rigid.velocity); // Enviar velocidad completa
+            stream.SendNext(rigid.velocity.magnitude); // Speed separado
+            stream.SendNext(isGrounded);
+            stream.SendNext(jumpRequested || anim.GetBool("isJump"));
+            stream.SendNext(hAxis); // Input horizontal
+            stream.SendNext(vAxis); // Input vertical
+            
+            if (showDebugInfo && Time.time % 3f < 0.1f) // Log cada 3 segundos
+            {
+                Debug.Log($"📡 {gameObject.name} ENVIANDO: Pos={transform.position:F1}, Vel={rigid.velocity:F1}, Grounded={isGrounded}");
+            }
+        }
+        else
+        {
+            // 🌐 SOY REMOTO - Recibir datos del owner
+            Vector3 receivedPosition = (Vector3)stream.ReceiveNext();
+            Quaternion receivedRotation = (Quaternion)stream.ReceiveNext();
+            Vector3 receivedVelocity = (Vector3)stream.ReceiveNext();
+            float receivedSpeed = (float)stream.ReceiveNext();
+            bool receivedGrounded = (bool)stream.ReceiveNext();
+            bool receivedJumping = (bool)stream.ReceiveNext();
+            float receivedHAxis = (float)stream.ReceiveNext();
+            float receivedVAxis = (float)stream.ReceiveNext();
+            
+            // Interpolar suavemente para evitar teleport
+            float lag = Mathf.Abs((float)(PhotonNetwork.Time - info.SentServerTime));
+            
+            // Compensar por lag de red
+            networkPosition = receivedPosition + receivedVelocity * lag;
+            networkRotation = receivedRotation;
+            networkSpeed = receivedSpeed;
+            networkGrounded = receivedGrounded;
+            networkJumping = receivedJumping;
+            
+            // Aplicar velocidad directamente para física más realista
+            if (rigid != null)
+            {
+                rigid.velocity = Vector3.Lerp(rigid.velocity, receivedVelocity, Time.deltaTime * 15f);
+            }
+            
+            // Actualizar animaciones con datos de red
+            if (anim != null)
+            {
+                anim.SetFloat("Speed", receivedSpeed);
+                anim.SetBool("isJump", receivedJumping);
+                anim.SetBool("isMove", receivedSpeed > 0.1f);
+                anim.SetBool("isGrounded", receivedGrounded);
+            }
+            
+            if (showDebugInfo && Time.time % 3f < 0.1f) // Log cada 3 segundos
+            {
+                Debug.Log($"📡 {gameObject.name} RECIBIENDO: Pos={receivedPosition:F1}, Vel={receivedVelocity:F1}, Lag={lag:F3}s");
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 🎮 Solo el owner puede controlar las colisiones
+    /// </summary>
+    [PunRPC]
+    void NetworkShakeCamera(float duration, float intensity)
+    {
+        var camera = FindObjectOfType<MovimientoCamaraSimple>();
+        if (camera != null)
+        {
+            camera.ShakeCamera(duration, intensity);
+        }
+    }
+    
+
+    
+    #endregion
 }
 
 
 
   
+
 
 
 

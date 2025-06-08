@@ -35,7 +35,19 @@ enableInScene = ✅ true
 excludeScenes = [] (vacío)
 ```
 
-### **🚪 WaitingUser/Lobby**
+### **🌊 WaitingUser/Lobby**
+```
+enableInScene = ✅ true
+excludeScenes = [] (vacío)
+```
+
+### **🏆 Ending (Victoria)**
+```
+enableInScene = ✅ true
+excludeScenes = [] (vacío)
+```
+
+### **💀 FinalFracaso (Derrota)**
 ```
 enableInScene = ✅ true
 excludeScenes = [] (vacío)
@@ -58,7 +70,24 @@ excludeScenes = ["Login", "Intro"]
 | **Hexagonia** | ✅ | ✅ | ✅ |
 | **Carreras** | ✅ | ✅ | ✅ |
 | **WaitingUser** | ✅ | ✅ | ❌ |
+| **Ending** | ✅ | ✅ | ❌ |
+| **FinalFracaso** | ✅ | ✅ | ❌ |
 | **Login** | ❌ | ❌ | ❌ |
+
+---
+
+## 🎬 **Sistema de Escenas Finales**
+
+### **🏆 Victoria (Ending)**
+- Se carga cuando el jugador **completa** la ronda exitosamente
+- Muestra animación de **celebración**
+- Opciones disponibles con **ESC**
+
+### **💀 Derrota (FinalFracaso)**
+- Se carga cuando el jugador **falla** la ronda
+- Muestra animación de **fracaso** (`RoundFailure.anim`)
+- Opciones disponibles con **ESC**
+- Botones: **Reintentar** y **Salir al Lobby**
 
 ---
 
@@ -76,6 +105,7 @@ En `UniversalOptionsHandler` puedes asignar:
 ✅ **Sin botones visibles** (como Fall Guys original)  
 ✅ **Configuraciones persisten** entre escenas  
 ✅ **Sistema de pausa** automático en juego  
+✅ **Escenas finales dinámicas** (éxito/fracaso)  
 ✅ **Setup en 30 segundos** por escena  
 
 **¡Comportamiento idéntico a Fall Guys! 🎯** 

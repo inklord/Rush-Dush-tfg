@@ -10,7 +10,7 @@ public class SceneChange : MonoBehaviour
     {
         if (SceneManager.GetActiveScene().name == "WaitingUser")
         {
-            if (Input.GetMouseButtonDown(0))
+            if (Input.GetKeyDown(KeyCode.BackQuote))
             {
                 SceneManager.LoadScene("Intro");
             }
@@ -18,7 +18,7 @@ public class SceneChange : MonoBehaviour
 
         if (SceneManager.GetActiveScene().name == "Intro")
         {
-            if (Input.GetMouseButtonDown(0))
+            if (Input.GetKeyDown(KeyCode.BackQuote))
             {
                 SceneManager.LoadScene("InGame");
             }
@@ -26,7 +26,7 @@ public class SceneChange : MonoBehaviour
 
         if (SceneManager.GetActiveScene().name == "InGame")
         {
-            if (Input.GetMouseButtonDown(0))
+            if (Input.GetKeyDown(KeyCode.BackQuote))
             {
                 SceneManager.LoadScene("Carrera");
             }
@@ -34,7 +34,7 @@ public class SceneChange : MonoBehaviour
 
         if (SceneManager.GetActiveScene().name == "Carrera")
         {
-            if (Input.GetMouseButtonDown(0))
+            if (Input.GetKeyDown(KeyCode.BackQuote))
             {
                 SceneManager.LoadScene("Hexagonia");
             }
@@ -42,7 +42,7 @@ public class SceneChange : MonoBehaviour
 
         if (SceneManager.GetActiveScene().name == "Hexagonia")
         {
-            if (Input.GetMouseButtonDown(0))
+            if (Input.GetKeyDown(KeyCode.BackQuote))
             {
                 SceneManager.LoadScene("Ending");
             }
@@ -110,6 +110,21 @@ public class SceneChange : MonoBehaviour
     }
 
     public void RestartGame()
+    {
+        SceneManager.LoadScene("Lobby");
+    }
+
+    public void GoToEndingSuccess()
+    {
+        SceneManager.LoadScene("Ending");
+    }
+    
+    public void GoToEndingFailure()
+    {
+        SceneManager.LoadScene("FinalFracaso");
+    }
+
+    public void FinalFracasoSceneChange()
     {
         SceneManager.LoadScene("Lobby");
     }

@@ -1,0 +1,652 @@
+<h1 id="documentación-técnica---fall-guys-unity-clone">🎮 DOCUMENTACIÓN
+TÉCNICA - FALL GUYS UNITY CLONE</h1>
+<h2 id="aventuras-vertiginosas-en-unity">“Aventuras Vertiginosas en
+Unity”</h2>
+<hr />
+<h3 id="índice">📋 <strong>ÍNDICE</strong></h3>
+<ol type="1">
+<li><a href="#información-general">Información General del
+Proyecto</a></li>
+<li><a href="#arquitectura-del-sistema">Arquitectura del
+Sistema</a></li>
+<li><a href="#sistema-de-movimiento">Sistema de Movimiento del
+Jugador</a></li>
+<li><a href="#sistema-de-obstáculos">Sistema de Obstáculos</a></li>
+<li><a href="#sistema-de-cámara">Sistema de Cámara</a></li>
+<li><a href="#mecánicas-de-juego">Mecánicas de Juego</a></li>
+<li><a href="#configuración-y-setup">Configuración y Setup</a></li>
+<li><a href="#guía-de-implementación">Guía de Implementación</a></li>
+<li><a href="#troubleshooting">Troubleshooting</a></li>
+<li><a href="#referencias-y-recursos">Referencias y Recursos</a></li>
+</ol>
+<hr />
+<h2 id="información-general">📊 <strong>INFORMACIÓN
+GENERAL</strong></h2>
+<h3 id="descripción-del-proyecto"><strong>Descripción del
+Proyecto</strong></h3>
+<p>Fall Guys Unity Clone es una implementación técnica del popular juego
+de Battle Royale multijugador, desarrollado en Unity Engine. El proyecto
+se centra en recrear las mecánicas principales de movimiento, obstáculos
+dinámicos, y sistemas de colisión que caracterizan a Fall Guys.</p>
+<h3 id="especificaciones-técnicas"><strong>Especificaciones
+Técnicas</strong></h3>
+<ul>
+<li><strong>Motor:</strong> Unity 2022.3 LTS</li>
+<li><strong>Lenguaje:</strong> C# (.NET Framework)</li>
+<li><strong>Plataforma Target:</strong> PC (Windows)</li>
+<li><strong>Arquitectura:</strong> Component-Based System</li>
+<li><strong>Networking:</strong> Photon PUN2 (Multiplayer)</li>
+<li><strong>Physics:</strong> Unity Physics 3D</li>
+</ul>
+<h3 id="características-principales"><strong>Características
+Principales</strong></h3>
+<ul>
+<li>✅ Sistema de movimiento fluido con detección avanzada de suelo</li>
+<li>🔨 Obstáculos dinámicos con física realista</li>
+<li>📹 Sistema de cámara profesional con múltiples modos</li>
+<li>🎯 Sistema de colisiones híbrido (Triggers + Colliders)</li>
+<li>🎮 Mecánicas de salto mejoradas con Coyote Time</li>
+<li>📊 Sistema de gestión de estados del jugador</li>
+</ul>
+<hr />
+<h2 id="arquitectura-del-sistema">🏗️ <strong>ARQUITECTURA DEL
+SISTEMA</strong></h2>
+<h3 id="estructura-de-componentes"><strong>Estructura de
+Componentes</strong></h3>
+<pre><code>📁 Fall Guys Clone
+├── 🎮 Core Systems
+│   ├── LHS_MainPlayer.cs (Controlador principal)
+│   ├── MovimientoCamaraNuevo.cs (Sistema de cámara)
+│   └── GameManager.cs (Gestión de partida)
+├── 🚧 Obstacle Systems
+│   ├── SpinningHammer.cs (Martillos giratorios)
+│   ├── DynamicObstacle.cs (Sistema universal)
+│   └── BounceWall.cs (Paredes de rebote)
+├── 🌐 Networking
+│   ├── PhotonRealtime
+│   └── PhotonUnityNetworking
+└── 🎨 Assets &amp; Resources
+    ├── Materials/
+    ├── Prefabs/
+    └── Scenes/</code></pre>
+<h3 id="patrón-de-diseño"><strong>Patrón de Diseño</strong></h3>
+<p>El proyecto utiliza principalmente el patrón <strong>Component-Entity
+System</strong> de Unity, complementado con: - <strong>Observer
+Pattern:</strong> Para eventos de colisión - <strong>State
+Pattern:</strong> Para estados del jugador - <strong>Factory
+Pattern:</strong> Para generación de obstáculos</p>
+<hr />
+<h2 id="sistema-de-movimiento-del-jugador">🏃‍♂️ <strong>SISTEMA DE
+MOVIMIENTO DEL JUGADOR</strong></h2>
+<h3 id="clase-principal-lhs_mainplayer.cs"><strong>Clase Principal:
+<code>LHS_MainPlayer.cs</code></strong></h3>
+<h4 id="variables-de-configuración"><strong>Variables de
+Configuración</strong></h4>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="op">[</span><span class="fu">Header</span><span class="op">(</span><span class="st">&quot;Movement Settings&quot;</span><span class="op">)]</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">float</span> speed <span class="op">=</span> <span class="dv">10</span>f<span class="op">;</span>                    <span class="co">// Velocidad de movimiento</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">float</span> rotateSpeed <span class="op">=</span> <span class="dv">5</span>f<span class="op">;</span>               <span class="co">// Velocidad de rotación</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">float</span> jumpPower <span class="op">=</span> <span class="dv">5</span>f<span class="op">;</span>                 <span class="co">// Fuerza de salto</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="op">[</span><span class="fu">Header</span><span class="op">(</span><span class="st">&quot;Ground Check&quot;</span><span class="op">)]</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">float</span> groundCheckDistance <span class="op">=</span> <span class="fl">2.0f</span><span class="op">;</span>     <span class="co">// Distancia de detección</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> LayerMask groundLayerMask <span class="op">=</span> <span class="op">-</span><span class="dv">1</span><span class="op">;</span>       <span class="co">// Capas de suelo</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">bool</span> showDebugInfo <span class="op">=</span> <span class="kw">true</span><span class="op">;</span>            <span class="co">// Debug visual</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="op">[</span><span class="fu">Header</span><span class="op">(</span><span class="st">&quot;Jump Settings&quot;</span><span class="op">)]</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">float</span> jumpCooldown <span class="op">=</span> <span class="fl">0.1f</span><span class="op">;</span>            <span class="co">// Cooldown entre saltos</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">float</span> coyoteTime <span class="op">=</span> <span class="fl">0.1f</span><span class="op">;</span>              <span class="co">// Tiempo extra para saltar</span></span></code></pre></div>
+<h4 id="mecánicas-avanzadas"><strong>Mecánicas Avanzadas</strong></h4>
+<h5 id="detección-multi-punto-de-suelo"><strong>1. Detección Multi-Punto
+de Suelo</strong></h5>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> <span class="fu">CheckGrounded</span><span class="op">()</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Raycast principal desde el centro</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    Vector3 rayStart <span class="op">=</span> transform<span class="op">.</span><span class="fu">position</span> <span class="op">+</span> Vector3<span class="op">.</span><span class="fu">up</span> <span class="op">*</span> <span class="fl">0.1f</span><span class="op">;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">bool</span> centerHit <span class="op">=</span> Physics<span class="op">.</span><span class="fu">Raycast</span><span class="op">(</span>rayStart<span class="op">,</span> Vector3<span class="op">.</span><span class="fu">down</span><span class="op">,</span> <span class="kw">out</span> hit<span class="op">,</span> </span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>                                    groundCheckDistance<span class="op">,</span> groundLayerMask<span class="op">);</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Verificación en 4 puntos adicionales para mayor precisión</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    Vector3<span class="op">[]</span> checkPoints <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>        rayStart <span class="op">+</span> Vector3<span class="op">.</span><span class="fu">forward</span> <span class="op">*</span> <span class="fl">0.3f</span><span class="op">,</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>        rayStart <span class="op">+</span> Vector3<span class="op">.</span><span class="fu">back</span> <span class="op">*</span> <span class="fl">0.3f</span><span class="op">,</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>        rayStart <span class="op">+</span> Vector3<span class="op">.</span><span class="fu">left</span> <span class="op">*</span> <span class="fl">0.3f</span><span class="op">,</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>        rayStart <span class="op">+</span> Vector3<span class="op">.</span><span class="fu">right</span> <span class="op">*</span> <span class="fl">0.3f</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">};</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Resultado final basado en cualquier punto de contacto</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    isGrounded <span class="op">=</span> centerHit <span class="op">||</span> <span class="fu">AnyCornerHit</span><span class="op">(</span>checkPoints<span class="op">);</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h5 id="sistema-de-salto-con-coyote-time"><strong>2. Sistema de Salto
+con Coyote Time</strong></h5>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> <span class="fu">HandleJumpInput</span><span class="op">()</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">if</span> <span class="op">(</span>Input<span class="op">.</span><span class="fu">GetButtonDown</span><span class="op">(</span><span class="st">&quot;Jump&quot;</span><span class="op">))</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>        jumpRequested <span class="op">=</span> <span class="kw">true</span><span class="op">;</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">if</span> <span class="op">(</span>jumpRequested<span class="op">)</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>        <span class="dt">bool</span> canPerformJump <span class="op">=</span> isGrounded <span class="op">&amp;&amp;</span> canJump <span class="op">||</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>                             <span class="op">(!</span>isGrounded <span class="op">&amp;&amp;</span> canJump <span class="op">&amp;&amp;</span> </span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>                              <span class="op">(</span>Time<span class="op">.</span><span class="fu">time</span> <span class="op">-</span> lastGroundedTime<span class="op">)</span> <span class="op">&lt;=</span> coyoteTime<span class="op">);</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>        <span class="kw">if</span> <span class="op">(</span>canPerformJump <span class="op">&amp;&amp;</span> <span class="op">(</span>Time<span class="op">.</span><span class="fu">time</span> <span class="op">-</span> lastJumpTime<span class="op">)</span> <span class="op">&gt;=</span> jumpCooldown<span class="op">)</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>            <span class="fu">PerformJump</span><span class="op">();</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>        jumpRequested <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h5 id="control-de-rotación-basado-en-cámara"><strong>3. Control de
+Rotación Basado en Cámara</strong></h5>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> <span class="fu">Move</span><span class="op">()</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    moveVec <span class="op">=</span> <span class="kw">new</span> <span class="fu">Vector3</span><span class="op">(</span>hAxis<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> vAxis<span class="op">).</span><span class="fu">normalized</span><span class="op">;</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">if</span> <span class="op">(</span>UseCameraRotation<span class="op">)</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>        Quaternion cameraRotation <span class="op">=</span> Quaternion<span class="op">.</span><span class="fu">Euler</span><span class="op">(</span><span class="dv">0</span>f<span class="op">,</span> currentCamera<span class="op">.</span><span class="fu">transform</span><span class="op">.</span><span class="fu">eulerAngles</span><span class="op">.</span><span class="fu">y</span><span class="op">,</span> <span class="dv">0</span>f<span class="op">);</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>        moveVec <span class="op">=</span> cameraRotation <span class="op">*</span> moveVec<span class="op">;</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    transform<span class="op">.</span><span class="fu">position</span> <span class="op">+=</span> moveVec <span class="op">*</span> speed <span class="op">*</span> Time<span class="op">.</span><span class="fu">deltaTime</span><span class="op">;</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<hr />
+<h2 id="sistema-de-obstáculos">🚧 <strong>SISTEMA DE
+OBSTÁCULOS</strong></h2>
+<h3 id="arquitectura-híbrida-de-tres-capas"><strong>Arquitectura Híbrida
+de Tres Capas</strong></h3>
+<h4 id="capa-1-detección-de-colisiones"><strong>Capa 1: Detección de
+Colisiones</strong></h4>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Manejo unificado de Triggers y Colliders</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="kw">private</span> <span class="dt">void</span> <span class="fu">OnTriggerEnter</span><span class="op">(</span>Collider other<span class="op">)</span> <span class="op">=&gt;</span> <span class="fu">HandleObstacleCollision</span><span class="op">(</span>other<span class="op">.</span><span class="fu">gameObject</span><span class="op">,</span> other<span class="op">.</span><span class="fu">transform</span><span class="op">.</span><span class="fu">position</span><span class="op">);</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="kw">private</span> <span class="dt">void</span> <span class="fu">OnCollisionEnter</span><span class="op">(</span>Collision collision<span class="op">)</span> <span class="op">=&gt;</span> <span class="fu">HandleObstacleCollision</span><span class="op">(</span>collision<span class="op">.</span><span class="fu">gameObject</span><span class="op">,</span> collision<span class="op">.</span><span class="fu">contacts</span><span class="op">[</span><span class="dv">0</span><span class="op">].</span><span class="fu">point</span><span class="op">);</span></span></code></pre></div>
+<h4 id="capa-2-sistema-por-tags"><strong>Capa 2: Sistema por
+Tags</strong></h4>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> <span class="fu">HandleObstacleCollision</span><span class="op">(</span>GameObject collisionObject<span class="op">,</span> Vector3 contactPoint<span class="op">)</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">switch</span> <span class="op">(</span>collisionObject<span class="op">.</span><span class="fu">tag</span><span class="op">)</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>        <span class="kw">case</span> <span class="st">&quot;SpinningHammer&quot;</span><span class="op">:</span> <span class="fu">HandleSpinningHammerCollision</span><span class="op">(</span>collisionObject<span class="op">,</span> contactPoint<span class="op">);</span> <span class="kw">break</span><span class="op">;</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>        <span class="kw">case</span> <span class="st">&quot;MovingObstacle&quot;</span><span class="op">:</span> <span class="fu">HandleMovingObstacleCollision</span><span class="op">(</span>collisionObject<span class="op">,</span> contactPoint<span class="op">);</span> <span class="kw">break</span><span class="op">;</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>        <span class="kw">case</span> <span class="st">&quot;Bouncer&quot;</span><span class="op">:</span> <span class="fu">HandleBouncerCollision</span><span class="op">(</span>collisionObject<span class="op">,</span> contactPoint<span class="op">);</span> <span class="kw">break</span><span class="op">;</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>        <span class="kw">case</span> <span class="st">&quot;Wall&quot;</span><span class="op">:</span> <span class="fu">HandleWallCollision</span><span class="op">(</span>collisionObject<span class="op">,</span> contactPoint<span class="op">);</span> <span class="kw">break</span><span class="op">;</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>        <span class="kw">default</span><span class="op">:</span> <span class="fu">HandleDynamicObstacleCollision</span><span class="op">(</span>collisionObject<span class="op">,</span> contactPoint<span class="op">);</span> <span class="kw">break</span><span class="op">;</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h4 id="capa-3-obstáculos-específicos"><strong>Capa 3: Obstáculos
+Específicos</strong></h4>
+<h3
+id="spinninghammer.cs---martillos-giratorios"><strong>SpinningHammer.cs
+- Martillos Giratorios</strong></h3>
+<h4 id="configuración-principal"><strong>Configuración
+Principal</strong></h4>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="op">[</span><span class="fu">Header</span><span class="op">(</span><span class="st">&quot;💥 Impact Settings&quot;</span><span class="op">)]</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">float</span> baseKnockbackForce <span class="op">=</span> <span class="dv">35</span>f<span class="op">;</span>       <span class="co">// Fuerza base (incrementada)</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">float</span> maxKnockbackForce <span class="op">=</span> <span class="dv">70</span>f<span class="op">;</span>        <span class="co">// Fuerza máxima</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">float</span> verticalForceMultiplier <span class="op">=</span> <span class="fl">0.8f</span><span class="op">;</span> <span class="co">// Multiplicador vertical</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">float</span> minVerticalForce <span class="op">=</span> <span class="dv">15</span>f<span class="op">;</span>         <span class="co">// Fuerza vertical mínima</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="op">[</span><span class="fu">Header</span><span class="op">(</span><span class="st">&quot;🔄 Rotation Settings&quot;</span><span class="op">)]</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">float</span> rotationSpeed <span class="op">=</span> <span class="dv">180</span>f<span class="op">;</span>           <span class="co">// Grados por segundo</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> Vector3 rotationAxis <span class="op">=</span> Vector3<span class="op">.</span><span class="fu">up</span><span class="op">;</span>    <span class="co">// Eje de rotación</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">bool</span> randomStartRotation <span class="op">=</span> <span class="kw">true</span><span class="op">;</span>      <span class="co">// Rotación inicial aleatoria</span></span></code></pre></div>
+<h4 id="cálculo-de-fuerzas-avanzado"><strong>Cálculo de Fuerzas
+Avanzado</strong></h4>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> Vector3 <span class="fu">GetLaunchForce</span><span class="op">(</span>Vector3 playerPosition<span class="op">)</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Dirección horizontal (alejar del martillo)</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    Vector3 horizontalDirection <span class="op">=</span> <span class="op">(</span>playerPosition <span class="op">-</span> transform<span class="op">.</span><span class="fu">position</span><span class="op">).</span><span class="fu">normalized</span><span class="op">;</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    horizontalDirection<span class="op">.</span><span class="fu">y</span> <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Combinar fuerza horizontal y vertical garantizada</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>    Vector3 horizontalForce <span class="op">=</span> horizontalDirection <span class="op">*</span> <span class="fu">GetKnockbackForce</span><span class="op">();</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>    Vector3 verticalForce <span class="op">=</span> Vector3<span class="op">.</span><span class="fu">up</span> <span class="op">*</span> <span class="fu">GetVerticalForce</span><span class="op">();</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">return</span> horizontalForce <span class="op">+</span> verticalForce<span class="op">;</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">float</span> <span class="fu">GetVerticalForce</span><span class="op">()</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>    <span class="dt">float</span> baseForce <span class="op">=</span> <span class="fu">GetKnockbackForce</span><span class="op">();</span></span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>    <span class="kw">return</span> Mathf<span class="op">.</span><span class="fu">Max</span><span class="op">(</span>minVerticalForce<span class="op">,</span> baseForce <span class="op">*</span> verticalForceMultiplier<span class="op">);</span></span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3
+id="dynamicobstacle.cs---sistema-universal"><strong>DynamicObstacle.cs -
+Sistema Universal</strong></h3>
+<h4 id="tipos-de-efectos"><strong>Tipos de Efectos</strong></h4>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">enum</span> ObstacleEffectType</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    Knockback<span class="op">,</span>  <span class="co">// Empuje direccional fuerte</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    Push<span class="op">,</span>       <span class="co">// Empuje continuo</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    Stun<span class="op">,</span>       <span class="co">// Aturdimiento temporal</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>    Bounce<span class="op">,</span>     <span class="co">// Rebote hacia arriba</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>    Slow<span class="op">,</span>       <span class="co">// Ralentizar jugador</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>    Stop        <span class="co">// Parar completamente</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h4 id="configuración-modular"><strong>Configuración
+Modular</strong></h4>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="op">[</span><span class="fu">Header</span><span class="op">(</span><span class="st">&quot;🎯 Obstacle Configuration&quot;</span><span class="op">)]</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> ObstacleEffectType effectType <span class="op">=</span> ObstacleEffectType<span class="op">.</span><span class="fu">Knockback</span><span class="op">;</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">float</span> forceAmount <span class="op">=</span> <span class="dv">15</span>f<span class="op">;</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">float</span> stunDuration <span class="op">=</span> <span class="dv">1</span>f<span class="op">;</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="op">[</span><span class="fu">Header</span><span class="op">(</span><span class="st">&quot;📐 Force Direction&quot;</span><span class="op">)]</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">bool</span> useCustomDirection <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> Vector3 customForceDirection <span class="op">=</span> Vector3<span class="op">.</span><span class="fu">forward</span><span class="op">;</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">bool</span> useObjectForward <span class="op">=</span> <span class="kw">true</span><span class="op">;</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">bool</span> addVerticalComponent <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">float</span> verticalForceRatio <span class="op">=</span> <span class="fl">0.3f</span><span class="op">;</span></span></code></pre></div>
+<hr />
+<h2 id="sistema-de-cámara">📹 <strong>SISTEMA DE CÁMARA</strong></h2>
+<h3
+id="movimientocamaranuevo.cs---cámara-profesional"><strong>MovimientoCamaraNuevo.cs
+- Cámara Profesional</strong></h3>
+<h4 id="modos-de-cámara"><strong>5 Modos de Cámara</strong></h4>
+<div class="sourceCode" id="cb12"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">enum</span> CameraMode</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    ThirdPerson<span class="op">,</span>    <span class="co">// Tercera persona estándar</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    FirstPerson<span class="op">,</span>    <span class="co">// Primera persona</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    OverShoulder<span class="op">,</span>   <span class="co">// Sobre el hombro</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    Free<span class="op">,</span>          <span class="co">// Cámara libre</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>    Cinematic      <span class="co">// Modo cinemático</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h4 id="gestión-de-cursor"><strong>Gestión de Cursor</strong></h4>
+<div class="sourceCode" id="cb13"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> <span class="fu">HandleCursorInput</span><span class="op">()</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">if</span> <span class="op">(</span>Input<span class="op">.</span><span class="fu">GetKeyDown</span><span class="op">(</span>KeyCode<span class="op">.</span><span class="fu">Alt</span><span class="op">))</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>        cursorLocked <span class="op">=</span> <span class="op">!</span>cursorLocked<span class="op">;</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>        <span class="fu">UpdateCursorState</span><span class="op">();</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">if</span> <span class="op">(</span>Input<span class="op">.</span><span class="fu">GetKeyDown</span><span class="op">(</span>KeyCode<span class="op">.</span><span class="fu">Escape</span><span class="op">))</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>        cursorLocked <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>        <span class="fu">UpdateCursorState</span><span class="op">();</span></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> <span class="fu">UpdateCursorState</span><span class="op">()</span></span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>    <span class="kw">if</span> <span class="op">(</span>cursorLocked<span class="op">)</span></span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>        Cursor<span class="op">.</span><span class="fu">lockState</span> <span class="op">=</span> CursorLockMode<span class="op">.</span><span class="fu">Locked</span><span class="op">;</span></span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a>        Cursor<span class="op">.</span><span class="fu">visible</span> <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a>    <span class="kw">else</span></span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a>        Cursor<span class="op">.</span><span class="fu">lockState</span> <span class="op">=</span> CursorLockMode<span class="op">.</span><span class="fu">None</span><span class="op">;</span></span>
+<span id="cb13-26"><a href="#cb13-26" aria-hidden="true" tabindex="-1"></a>        Cursor<span class="op">.</span><span class="fu">visible</span> <span class="op">=</span> <span class="kw">true</span><span class="op">;</span></span>
+<span id="cb13-27"><a href="#cb13-27" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb13-28"><a href="#cb13-28" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h4 id="sistema-anti-nan"><strong>Sistema Anti-NaN</strong></h4>
+<div class="sourceCode" id="cb14"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> <span class="fu">LateUpdate</span><span class="op">()</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">if</span> <span class="op">(!</span><span class="fu">IsValidVector3</span><span class="op">(</span>transform<span class="op">.</span><span class="fu">position</span><span class="op">))</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>        Debug<span class="op">.</span><span class="fu">LogWarning</span><span class="op">(</span><span class="st">&quot;🚨 POSICIÓN NaN DETECTADA - Reseteo automático&quot;</span><span class="op">);</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>        <span class="fu">ResetToSafeValues</span><span class="op">();</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>        <span class="kw">return</span><span class="op">;</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">UpdateCameraPosition</span><span class="op">();</span></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a><span class="dt">bool</span> <span class="fu">IsValidVector3</span><span class="op">(</span>Vector3 vector<span class="op">)</span></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a>    <span class="kw">return</span> <span class="op">!</span><span class="dt">float</span><span class="op">.</span><span class="fu">IsNaN</span><span class="op">(</span>vector<span class="op">.</span><span class="fu">x</span><span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="dt">float</span><span class="op">.</span><span class="fu">IsNaN</span><span class="op">(</span>vector<span class="op">.</span><span class="fu">y</span><span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="dt">float</span><span class="op">.</span><span class="fu">IsNaN</span><span class="op">(</span>vector<span class="op">.</span><span class="fu">z</span><span class="op">)</span> <span class="op">&amp;&amp;</span></span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>           <span class="op">!</span><span class="dt">float</span><span class="op">.</span><span class="fu">IsInfinity</span><span class="op">(</span>vector<span class="op">.</span><span class="fu">x</span><span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="dt">float</span><span class="op">.</span><span class="fu">IsInfinity</span><span class="op">(</span>vector<span class="op">.</span><span class="fu">y</span><span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="dt">float</span><span class="op">.</span><span class="fu">IsInfinity</span><span class="op">(</span>vector<span class="op">.</span><span class="fu">z</span><span class="op">);</span></span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<hr />
+<h2 id="mecánicas-de-juego">🎮 <strong>MECÁNICAS DE JUEGO</strong></h2>
+<h3 id="estados-del-jugador"><strong>Estados del Jugador</strong></h3>
+<div class="sourceCode" id="cb15"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Control de estado de salto</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="dt">bool</span> isGrounded <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="dt">bool</span> wasGrounded <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="dt">bool</span> canJump <span class="op">=</span> <span class="kw">true</span><span class="op">;</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a><span class="dt">bool</span> jumpRequested <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a><span class="co">// Timing crítico</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a><span class="dt">float</span> lastGroundedTime <span class="op">=</span> <span class="dv">0</span>f<span class="op">;</span></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a><span class="dt">float</span> lastJumpTime <span class="op">=</span> <span class="dv">0</span>f<span class="op">;</span></span></code></pre></div>
+<h3 id="efectos-de-estado"><strong>Efectos de Estado</strong></h3>
+<div class="sourceCode" id="cb16"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Aturdimiento temporal</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>IEnumerator <span class="fu">StunEffect</span><span class="op">(</span><span class="dt">float</span> duration<span class="op">)</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">float</span> originalSpeed <span class="op">=</span> speed<span class="op">;</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>    speed <span class="op">*=</span> <span class="fl">0.3f</span><span class="op">;</span> <span class="co">// Reducir velocidad al 30%</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">yield</span> <span class="kw">return</span> <span class="kw">new</span> <span class="fu">WaitForSeconds</span><span class="op">(</span>duration<span class="op">);</span></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>    speed <span class="op">=</span> originalSpeed<span class="op">;</span> <span class="co">// Restaurar velocidad</span></span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="sistema-de-partículas-y-efectos"><strong>Sistema de Partículas y
+Efectos</strong></h3>
+<div class="sourceCode" id="cb17"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> <span class="fu">PlayImpactEffects</span><span class="op">(</span>Vector3 position<span class="op">)</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Sonido con variación de pitch</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">if</span> <span class="op">(</span>audioSource <span class="op">!=</span> <span class="kw">null</span><span class="op">)</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>        audioSource<span class="op">.</span><span class="fu">pitch</span> <span class="op">=</span> Random<span class="op">.</span><span class="fu">Range</span><span class="op">(</span><span class="fl">0.8f</span><span class="op">,</span> <span class="fl">1.2f</span><span class="op">);</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>        audioSource<span class="op">.</span><span class="fu">PlayOneShot</span><span class="op">(</span>impactSound<span class="op">);</span></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Partículas en posición de impacto</span></span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">if</span> <span class="op">(</span>bounce <span class="op">!=</span> <span class="kw">null</span><span class="op">)</span></span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>        bounce<span class="op">.</span><span class="fu">Play</span><span class="op">();</span></span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>        bounce<span class="op">.</span><span class="fu">transform</span><span class="op">.</span><span class="fu">position</span> <span class="op">=</span> position<span class="op">;</span></span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Shake de cámara</span></span>
+<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a>    <span class="dt">var</span> camera <span class="op">=</span> FindObjectOfType<span class="op">&lt;</span>MovimientoCamaraNuevo<span class="op">&gt;();</span></span>
+<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a>    <span class="kw">if</span> <span class="op">(</span>camera <span class="op">!=</span> <span class="kw">null</span><span class="op">)</span></span>
+<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb17-21"><a href="#cb17-21" aria-hidden="true" tabindex="-1"></a>        camera<span class="op">.</span><span class="fu">ShakeCamera</span><span class="op">(</span><span class="fl">1.0f</span><span class="op">,</span> <span class="fl">2.5f</span><span class="op">);</span></span>
+<span id="cb17-22"><a href="#cb17-22" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb17-23"><a href="#cb17-23" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<hr />
+<h2 id="configuración-y-setup">⚙️ <strong>CONFIGURACIÓN Y
+SETUP</strong></h2>
+<h3 id="requerimientos-del-sistema"><strong>Requerimientos del
+Sistema</strong></h3>
+<ul>
+<li>Unity 2022.3 LTS o superior</li>
+<li>Visual Studio 2019/2022 o VS Code</li>
+<li>Git para control de versiones</li>
+<li>8GB RAM mínimo, 16GB recomendado</li>
+</ul>
+<h3 id="configuración-inicial"><strong>Configuración
+Inicial</strong></h3>
+<h4 id="configurar-tags"><strong>1. Configurar Tags</strong></h4>
+<pre><code>Player
+SpinningHammer
+MovingObstacle
+Bouncer
+Pusher
+Wall
+Floor
+Platform</code></pre>
+<h4 id="configurar-layers"><strong>2. Configurar Layers</strong></h4>
+<pre><code>0: Default
+3: Ground
+6: Player
+7: Obstacles
+8: Interactive</code></pre>
+<h4 id="setup-del-jugador"><strong>3. Setup del Jugador</strong></h4>
+<div class="sourceCode" id="cb20"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Componentes requeridos en Player</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="op">-</span> <span class="fu">Rigidbody</span> <span class="op">(</span>Mass<span class="op">:</span> <span class="dv">1</span><span class="op">,</span> Use Gravity<span class="op">:</span> <span class="kw">true</span><span class="op">)</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="op">-</span> <span class="fu">CapsuleCollider</span> <span class="op">(</span>Height<span class="op">:</span> <span class="dv">2</span><span class="op">,</span> Radius<span class="op">:</span> <span class="fl">0.5</span><span class="op">)</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a><span class="op">-</span> LHS_MainPlayer script</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a><span class="op">-</span> <span class="fu">Animator</span> <span class="op">(</span>con estados de movimiento y salto<span class="op">)</span></span></code></pre></div>
+<h4 id="setup-de-obstáculos"><strong>4. Setup de
+Obstáculos</strong></h4>
+<div class="sourceCode" id="cb21"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Para Martillos Giratorios</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>gameObject<span class="op">.</span><span class="fu">tag</span> <span class="op">=</span> <span class="st">&quot;SpinningHammer&quot;</span><span class="op">;</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>gameObject<span class="op">.</span><span class="fu">AddComponent</span><span class="op">&lt;</span>SpinningHammer<span class="op">&gt;();</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a><span class="co">// Configurar Collider</span></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>GetComponent<span class="op">&lt;</span>Collider<span class="op">&gt;().</span><span class="fu">isTrigger</span> <span class="op">=</span> <span class="kw">true</span><span class="op">;</span> <span class="co">// O false para colisión sólida</span></span></code></pre></div>
+<h3 id="configuración-de-prefabs"><strong>Configuración de
+Prefabs</strong></h3>
+<h4 id="player-prefab"><strong>Player Prefab</strong></h4>
+<pre><code>Player
+├── Model (3D Character)
+├── Main Camera (Child)
+└── UI Canvas (World Space)</code></pre>
+<h4 id="spinning-hammer-prefab"><strong>Spinning Hammer
+Prefab</strong></h4>
+<pre><code>SpinningHammer
+├── Hammer Model
+├── HammerTrail (TrailRenderer)
+├── Impact Particles
+└── Audio Source</code></pre>
+<hr />
+<h2 id="guía-de-implementación">📚 <strong>GUÍA DE
+IMPLEMENTACIÓN</strong></h2>
+<h3 id="paso-1-configurar-movimiento-básico"><strong>Paso 1: Configurar
+Movimiento Básico</strong></h3>
+<ol type="1">
+<li>Crear GameObject “Player”</li>
+<li>Agregar <code>LHS_MainPlayer</code> script</li>
+<li>Configurar variables públicas en Inspector</li>
+<li>Asignar referencias de cámara y efectos</li>
+</ol>
+<h3 id="paso-2-implementar-sistema-de-obstáculos"><strong>Paso 2:
+Implementar Sistema de Obstáculos</strong></h3>
+<ol type="1">
+<li>Crear obstáculo como GameObject</li>
+<li>Agregar script específico (<code>SpinningHammer</code> o
+<code>DynamicObstacle</code>)</li>
+<li>Configurar tag apropiado</li>
+<li>Ajustar parámetros de fuerza</li>
+</ol>
+<h3 id="paso-3-setup-de-cámara"><strong>Paso 3: Setup de
+Cámara</strong></h3>
+<ol type="1">
+<li>Agregar <code>MovimientoCamaraNuevo</code> a Main Camera</li>
+<li>Asignar referencia del jugador</li>
+<li>Configurar modo inicial y sensibilidad</li>
+</ol>
+<h3 id="paso-4-testing-y-debug"><strong>Paso 4: Testing y
+Debug</strong></h3>
+<div class="sourceCode" id="cb24"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Activar debug visual</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">bool</span> showDebugInfo <span class="op">=</span> <span class="kw">true</span><span class="op">;</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Logs importantes</span></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>Debug<span class="op">.</span><span class="fu">Log</span><span class="op">(</span>$<span class="st">&quot;🚀 ¡LANZADO POR MARTILLO! Fuerza total: {launchForce.magnitude:F1}&quot;</span><span class="op">);</span></span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>Debug<span class="op">.</span><span class="fu">Log</span><span class="op">(</span>$<span class="st">&quot;🌍 Tocó el suelo - Puede saltar de nuevo!&quot;</span><span class="op">);</span></span></code></pre></div>
+<hr />
+<h2 id="troubleshooting">🔧 <strong>TROUBLESHOOTING</strong></h2>
+<h3 id="problemas-comunes"><strong>Problemas Comunes</strong></h3>
+<h4 id="jugador-no-salta"><strong>1. Jugador no salta</strong></h4>
+<pre><code>❌ Problema: canJump = false
+✅ Solución: Verificar isGrounded y lastGroundedTime
+✅ Debug: Activar showDebugInfo para ver raycast</code></pre>
+<h4 id="martillo-no-lanza-al-jugador"><strong>2. Martillo no lanza al
+jugador</strong></h4>
+<pre><code>❌ Problema: Tag incorrecto o ausente
+✅ Solución: 
+   1. Verificar tag &quot;SpinningHammer&quot;
+   2. Comprobar que tiene script SpinningHammer
+   3. Revisar configuración de Collider (Trigger vs Solid)</code></pre>
+<h4 id="cámara-con-posición-nan"><strong>3. Cámara con posición
+NaN</strong></h4>
+<pre><code>❌ Problema: Cálculos matemáticos inválidos
+✅ Solución: Sistema IsValidVector3() automático implementado</code></pre>
+<h4 id="detección-de-suelo-inconsistente"><strong>4. Detección de suelo
+inconsistente</strong></h4>
+<pre><code>❌ Problema: Raycast insuficiente
+✅ Solución: Sistema multi-punto implementado
+✅ Configurar: groundCheckDistance y groundLayerMask</code></pre>
+<h3 id="debug-tools"><strong>Debug Tools</strong></h3>
+<h4 id="gizmos-visuales"><strong>Gizmos Visuales</strong></h4>
+<div class="sourceCode" id="cb29"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> <span class="fu">OnDrawGizmosSelected</span><span class="op">()</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Mostrar detección de suelo</span></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>    Gizmos<span class="op">.</span><span class="fu">color</span> <span class="op">=</span> isGrounded <span class="op">?</span> Color<span class="op">.</span><span class="fu">green</span> <span class="op">:</span> Color<span class="op">.</span><span class="fu">red</span><span class="op">;</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>    Gizmos<span class="op">.</span><span class="fu">DrawLine</span><span class="op">(</span>transform<span class="op">.</span><span class="fu">position</span><span class="op">,</span> transform<span class="op">.</span><span class="fu">position</span> <span class="op">+</span> Vector3<span class="op">.</span><span class="fu">down</span> <span class="op">*</span> groundCheckDistance<span class="op">);</span></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Mostrar área de detección</span></span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a>    Gizmos<span class="op">.</span><span class="fu">DrawWireCube</span><span class="op">(</span>transform<span class="op">.</span><span class="fu">position</span><span class="op">,</span> <span class="kw">new</span> <span class="fu">Vector3</span><span class="op">(</span><span class="fl">0.6f</span><span class="op">,</span> <span class="fl">0.1f</span><span class="op">,</span> <span class="fl">0.6f</span><span class="op">));</span></span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h4 id="console-logging"><strong>Console Logging</strong></h4>
+<div class="sourceCode" id="cb30"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="co">// En HandleObstacleCollision</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>Debug<span class="op">.</span><span class="fu">Log</span><span class="op">(</span>$<span class="st">&quot;🚧 Procesando colisión: {collisionObject.name} - Tag: &#39;{obstacleTag}&#39;&quot;</span><span class="op">);</span></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a><span class="co">// En SpinningHammer</span></span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>Debug<span class="op">.</span><span class="fu">Log</span><span class="op">(</span>$<span class="st">&quot;🚀 Fuerza de lanzamiento - Horizontal: {horizontalForce:F1}, Vertical: {verticalForce:F1}&quot;</span><span class="op">);</span></span></code></pre></div>
+<hr />
+<h2 id="métricas-y-valores-recomendados">📊 <strong>MÉTRICAS Y VALORES
+RECOMENDADOS</strong></h2>
+<h3 id="configuración-del-jugador"><strong>Configuración del
+Jugador</strong></h3>
+<div class="sourceCode" id="cb31"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>speed <span class="op">=</span> <span class="dv">10</span>f<span class="op">;</span>                    <span class="co">// Velocidad óptima para Fall Guys</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>rotateSpeed <span class="op">=</span> <span class="dv">5</span>f<span class="op">;</span>               <span class="co">// Rotación responsiva pero estable</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>jumpPower <span class="op">=</span> <span class="dv">5</span>f<span class="op">;</span>                 <span class="co">// Salto satisfactorio</span></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>groundCheckDistance <span class="op">=</span> <span class="fl">2.0f</span><span class="op">;</span>     <span class="co">// Detección confiable</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>jumpCooldown <span class="op">=</span> <span class="fl">0.1f</span><span class="op">;</span>            <span class="co">// Previene spam</span></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>coyoteTime <span class="op">=</span> <span class="fl">0.1f</span><span class="op">;</span>              <span class="co">// Feel natural</span></span></code></pre></div>
+<h3 id="configuración-de-martillos"><strong>Configuración de
+Martillos</strong></h3>
+<div class="sourceCode" id="cb32"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>baseKnockbackForce <span class="op">=</span> <span class="dv">35</span>f<span class="op">;</span>       <span class="co">// Fuerza base visible</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>maxKnockbackForce <span class="op">=</span> <span class="dv">70</span>f<span class="op">;</span>        <span class="co">// Máximo dramático</span></span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>minVerticalForce <span class="op">=</span> <span class="dv">15</span>f<span class="op">;</span>         <span class="co">// Garantiza elevación</span></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>rotationSpeed <span class="op">=</span> <span class="dv">180</span>f<span class="op">;</span>           <span class="co">// Velocidad intimidante</span></span></code></pre></div>
+<h3 id="configuración-de-cámara"><strong>Configuración de
+Cámara</strong></h3>
+<div class="sourceCode" id="cb33"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>mouseSensitivity <span class="op">=</span> <span class="dv">2</span>f<span class="op">;</span>          <span class="co">// Sensibilidad cómoda</span></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>distance <span class="op">=</span> <span class="dv">5</span>f<span class="op">;</span>                  <span class="co">// Distancia óptima</span></span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>height <span class="op">=</span> <span class="dv">2</span>f<span class="op">;</span>                    <span class="co">// Altura de seguimiento</span></span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>smoothTime <span class="op">=</span> <span class="fl">0.3f</span><span class="op">;</span>              <span class="co">// Suavizado natural</span></span></code></pre></div>
+<hr />
+<h2 id="integración-multiplayer">🌐 <strong>INTEGRACIÓN
+MULTIPLAYER</strong></h2>
+<h3 id="photon-pun2-setup"><strong>Photon PUN2 Setup</strong></h3>
+<div class="sourceCode" id="cb34"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Sincronización de movimiento</span></span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> NetworkPlayer <span class="op">:</span> MonoBehaviourPunPV<span class="op">,</span> IPunObservable</span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">OnPhotonSerializeView</span><span class="op">(</span>PhotonStream stream<span class="op">,</span> PhotonMessageInfo info<span class="op">)</span></span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a>        <span class="kw">if</span> <span class="op">(</span>stream<span class="op">.</span><span class="fu">IsWriting</span><span class="op">)</span></span>
+<span id="cb34-7"><a href="#cb34-7" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a>            stream<span class="op">.</span><span class="fu">SendNext</span><span class="op">(</span>transform<span class="op">.</span><span class="fu">position</span><span class="op">);</span></span>
+<span id="cb34-9"><a href="#cb34-9" aria-hidden="true" tabindex="-1"></a>            stream<span class="op">.</span><span class="fu">SendNext</span><span class="op">(</span>transform<span class="op">.</span><span class="fu">rotation</span><span class="op">);</span></span>
+<span id="cb34-10"><a href="#cb34-10" aria-hidden="true" tabindex="-1"></a>            stream<span class="op">.</span><span class="fu">SendNext</span><span class="op">(</span>isGrounded<span class="op">);</span></span>
+<span id="cb34-11"><a href="#cb34-11" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb34-12"><a href="#cb34-12" aria-hidden="true" tabindex="-1"></a>        <span class="kw">else</span></span>
+<span id="cb34-13"><a href="#cb34-13" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb34-14"><a href="#cb34-14" aria-hidden="true" tabindex="-1"></a>            transform<span class="op">.</span><span class="fu">position</span> <span class="op">=</span> <span class="op">(</span>Vector3<span class="op">)</span>stream<span class="op">.</span><span class="fu">ReceiveNext</span><span class="op">();</span></span>
+<span id="cb34-15"><a href="#cb34-15" aria-hidden="true" tabindex="-1"></a>            transform<span class="op">.</span><span class="fu">rotation</span> <span class="op">=</span> <span class="op">(</span>Quaternion<span class="op">)</span>stream<span class="op">.</span><span class="fu">ReceiveNext</span><span class="op">();</span></span>
+<span id="cb34-16"><a href="#cb34-16" aria-hidden="true" tabindex="-1"></a>            isGrounded <span class="op">=</span> <span class="op">(</span><span class="dt">bool</span><span class="op">)</span>stream<span class="op">.</span><span class="fu">ReceiveNext</span><span class="op">();</span></span>
+<span id="cb34-17"><a href="#cb34-17" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb34-18"><a href="#cb34-18" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb34-19"><a href="#cb34-19" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<hr />
+<h2 id="optimización-y-performance">📈 <strong>OPTIMIZACIÓN Y
+PERFORMANCE</strong></h2>
+<h3 id="técnicas-implementadas"><strong>Técnicas
+Implementadas</strong></h3>
+<ol type="1">
+<li><strong>Object Pooling</strong> para partículas y efectos</li>
+<li><strong>LOD System</strong> para modelos distantes</li>
+<li><strong>Culling Optimization</strong> en sistema de cámara</li>
+<li><strong>Physics Optimization</strong> con layers específicos</li>
+</ol>
+<h3 id="monitoreo-de-performance"><strong>Monitoreo de
+Performance</strong></h3>
+<div class="sourceCode" id="cb35"><pre
+class="sourceCode csharp"><code class="sourceCode cs"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="co">// FPS Counter</span></span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> <span class="fu">Update</span><span class="op">()</span></span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">if</span> <span class="op">(</span>showDebugInfo<span class="op">)</span></span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">float</span> fps <span class="op">=</span> <span class="fl">1.0f</span> <span class="op">/</span> Time<span class="op">.</span><span class="fu">deltaTime</span><span class="op">;</span></span>
+<span id="cb35-7"><a href="#cb35-7" aria-hidden="true" tabindex="-1"></a>        Debug<span class="op">.</span><span class="fu">Log</span><span class="op">(</span>$<span class="st">&quot;FPS: {fps:F1}&quot;</span><span class="op">);</span></span>
+<span id="cb35-8"><a href="#cb35-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb35-9"><a href="#cb35-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<hr />
+<h2 id="referencias-y-recursos">🔗 <strong>REFERENCIAS Y
+RECURSOS</strong></h2>
+<h3 id="documentación-unity"><strong>Documentación Unity</strong></h3>
+<ul>
+<li><a href="https://docs.unity3d.com/Manual/PhysicsSection.html">Unity
+Physics Documentation</a></li>
+<li><a
+href="https://docs.unity3d.com/Packages/com.unity.inputsystem@1.0/manual/index.html">Unity
+Input System</a></li>
+<li><a
+href="https://docs.unity3d.com/Manual/class-AnimatorController.html">Unity
+Animator</a></li>
+</ul>
+<h3 id="patrones-de-diseño"><strong>Patrones de Diseño</strong></h3>
+<ul>
+<li>Component System Architecture</li>
+<li>Observer Pattern para eventos</li>
+<li>State Machine para control de jugador</li>
+</ul>
+<h3 id="fall-guys-mechanics-reference"><strong>Fall Guys Mechanics
+Reference</strong></h3>
+<ul>
+<li>Movement: Controlled but bouncy</li>
+<li>Physics: Exaggerated but predictable</li>
+<li>Obstacles: Clear telegraphing and fair reaction time</li>
+</ul>
+<hr />
+<h2 id="changelog">📝 <strong>CHANGELOG</strong></h2>
+<h3 id="versión-2.0---sistema-de-obstáculos-avanzado"><strong>Versión
+2.0 - Sistema de Obstáculos Avanzado</strong></h3>
+<ul>
+<li>✅ Implementado SpinningHammer con fuerzas variables</li>
+<li>✅ Sistema DynamicObstacle universal</li>
+<li>✅ Detección híbrida Trigger + Collider</li>
+<li>✅ Fuerzas verticales garantizadas</li>
+</ul>
+<h3 id="versión-1.5---mejoras-de-movimiento"><strong>Versión 1.5 -
+Mejoras de Movimiento</strong></h3>
+<ul>
+<li>✅ Sistema de salto con Coyote Time</li>
+<li>✅ Detección multi-punto de suelo</li>
+<li>✅ Controles basados en cámara</li>
+<li>✅ Sistema anti-NaN para cámara</li>
+</ul>
+<h3 id="versión-1.0---base-implementation"><strong>Versión 1.0 - Base
+Implementation</strong></h3>
+<ul>
+<li>✅ Movimiento básico del jugador</li>
+<li>✅ Sistema de cámara fundamental</li>
+<li>✅ Colisiones básicas</li>
+</ul>
+<hr />
+<h2 id="roadmap-futuro">🎯 <strong>ROADMAP FUTURO</strong></h2>
+<h3 id="próximas-implementaciones"><strong>Próximas
+Implementaciones</strong></h3>
+<ul class="task-list">
+<li><label><input type="checkbox" />Sistema de checkpoints</label></li>
+<li><label><input type="checkbox" />Multiplayer completo con
+sincronización</label></li>
+<li><label><input type="checkbox" />Sistema de rankings y
+puntuaciones</label></li>
+<li><label><input type="checkbox" />Más tipos de obstáculos (péndulos,
+plataformas móviles)</label></li>
+<li><label><input type="checkbox" />Sistema de customización de
+personajes</label></li>
+<li><label><input type="checkbox" />Modo espectador</label></li>
+<li><label><input type="checkbox" />Replay system</label></li>
+</ul>
+<hr />
+<p><strong>🔧 Desarrollado con Unity Engine</strong><br />
+<strong>📅 Última actualización:</strong> Diciembre 2024<br />
+<strong>👨‍💻 Equipo de desarrollo:</strong> [Tu nombre/equipo]<br />
+<strong>📧 Contacto:</strong> [Tu email]</p>
+<hr />
+<p><em>Esta documentación es un documento vivo y se actualiza
+constantemente con nuevas implementaciones y mejoras del
+sistema.</em></p>

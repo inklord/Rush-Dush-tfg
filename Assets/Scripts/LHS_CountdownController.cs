@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-// 3, 2 ,1 , GO!¸¦ ÇÑ ÈÄ °ÔÀÓÀ» ½ÃÀÛÇÏ°í ½Í´Ù
-// °ÔÀÓÀÌ ¸ØÃç ÀÖ´Â´Ù
-// 1ÃÊ °£°ÝÀ¸·Î 3, 2, 1ÀÌ ³ª¿Â´Ù
-// ¹Ù²ð ¶§¸¶´Ù UI¸¦ ²°´Ù ÄÑÁá´Ù ÇÑ´Ù
-// ½Ã°£ÀÌ ´Ù Áö³ª¸é GO! UI¸¦ ²ô°í
-// ´Ù½Ã °ÔÀÓÀ» ÄÑÁØ´Ù
+// 3, 2 ,1 , GO!ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï°ï¿½ ï¿½Ê¹
+//   Ö´Â´
+// 1  3, 2, 1 Â´
+// Ù²  UI   Ñ´
+//Ã°   GO! UI 
+// Ù½  Ø´
 
 public class LHS_CountdownController : MonoBehaviour
 {
@@ -17,35 +17,68 @@ public class LHS_CountdownController : MonoBehaviour
     public Text countdownDisplay;
     public GameObject anim;
 
-    public GameObject Num_A;   //1¹ø
-    public GameObject Num_B;   //2¹ø
-    public GameObject Num_C;   //3¹ø
+    public GameObject Num_A;   //1
+    public GameObject Num_B;   //2
+    public GameObject Num_C;   //3
     public GameObject Num_GO;
     //public GameObject Bar;
     
-    // ÅØ½ºÆ® È¿°ú
+    // Ø½Æ® È¿
     Animator animator;
 
-    // »ç¿îµå È¿°ú
+    //  È¿
     public AudioSource mysfx;
     public AudioClip startsfx;
     public AudioClip gosfx;
 
     private void Awake()
     {
+        // âœ… Verificar componentes crÃ­ticos
+        if (countdownDisplay == null)
+        {
+            Debug.LogError("LHS_CountdownController: countdownDisplay no estÃ¡ asignado!");
+            return;
+        }
         
-        animator = anim.GetComponent<Animator>();
+        if (anim != null)
+        {
+            animator = anim.GetComponent<Animator>();
+            if (animator == null)
+            {
+                Debug.LogWarning("LHS_CountdownController: No se encontrÃ³ Animator en el objeto anim");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("LHS_CountdownController: anim GameObject no estÃ¡ asignado");
+        }
+        
+        // âœ… Verificar componentes de audio (no crÃ­ticos)
+        if (mysfx == null)
+        {
+            Debug.LogWarning("LHS_CountdownController: AudioSource (mysfx) no estÃ¡ asignado - sonidos deshabilitados");
+        }
+        if (startsfx == null)
+        {
+            Debug.LogWarning("LHS_CountdownController: AudioClip startsfx no estÃ¡ asignado");
+        }
+        if (gosfx == null)
+        {
+            Debug.LogWarning("LHS_CountdownController: AudioClip gosfx no estÃ¡ asignado");
+        }
+        
         StartCoroutine(CountdownToStart());
 
-        Num_A.SetActive(false); //1¹ø
-        Num_B.SetActive(false); //2¹ø
-        Num_C.SetActive(false); //3¹ø
-        Num_GO.SetActive(false);
+        // âœ… Verificar GameObjects UI antes de usarlos
+        if (Num_A != null) Num_A.SetActive(false); //1
+        if (Num_B != null) Num_B.SetActive(false); //2
+        if (Num_C != null) Num_C.SetActive(false); //3
+        if (Num_GO != null) Num_GO.SetActive(false);
 
         Time.timeScale = 0;
     }
 
-    //ÄÚ·çÆ¾ ÇÔ¼ö »ç¿ë
+    //Ú·Æ¾ Ô¼ 
     IEnumerator CountdownToStart()
     {
         //Bar.SetActive(true);
@@ -56,23 +89,32 @@ public class LHS_CountdownController : MonoBehaviour
 
             ChangeImage();
 
-            countdownDisplay.text = countdownTime.ToString();
+            if (countdownDisplay != null)
+            {
+                countdownDisplay.text = countdownTime.ToString();
+            }
 
-            // 1ÃÊ ´ë±â
+            // 1 
             yield return new WaitForSecondsRealtime(1f);
 
             countdownTime--;
         }
 
-        // ³¡³ª¸é °ÔÀÓÀÌ ½ÃÀÛ
-        countdownDisplay.text = "GO!";
+        //   
+        if (countdownDisplay != null)
+        {
+            countdownDisplay.text = "GO!";
+        }
         //Num_GO.SetActive(false);
 
         Time.timeScale = 1;
 
         yield return new WaitForSecondsRealtime(1f);
 
-        countdownDisplay.gameObject.SetActive(false);
+        if (countdownDisplay != null)
+        {
+            countdownDisplay.gameObject.SetActive(false);
+        }
     }
 
     void ChangeImage()
@@ -81,36 +123,88 @@ public class LHS_CountdownController : MonoBehaviour
 
         if (i == 4)
         {
-            Num_C.SetActive(true);
-            animator.SetBool("Num3", true);
-            mysfx.PlayOneShot(startsfx);
-
+            if (Num_C != null)
+            {
+                Num_C.SetActive(true);
+            }
+            
+            if (animator != null)
+            {
+                animator.SetBool("Num3", true);
+            }
+            
+            // âœ… VerificaciÃ³n de null antes de reproducir sonido
+            PlaySoundSafe(startsfx);
         }
 
         if (i == 3)
         {
             //Num_C.SetActive(false);
-            Num_B.SetActive(true);
+            if (Num_B != null)
+            {
+                Num_B.SetActive(true);
+            }
             //animator.SetBool("Num3", true);
-            mysfx.PlayOneShot(startsfx);
+            
+            // âœ… VerificaciÃ³n de null antes de reproducir sonido
+            PlaySoundSafe(startsfx);
         }
 
         if (i == 2)
         {
             //Num_B.SetActive(false);
-            Num_A.SetActive(true);
+            if (Num_A != null)
+            {
+                Num_A.SetActive(true);
+            }
             //animator.SetBool("Num3", true);
-            mysfx.PlayOneShot(startsfx);
+            
+            // âœ… VerificaciÃ³n de null antes de reproducir sonido
+            PlaySoundSafe(startsfx);
         }
 
         if (i == 1)
         {
             //Num_A.SetActive(false);
-            Num_GO.SetActive(true);
+            if (Num_GO != null)
+            {
+                Num_GO.SetActive(true);
+            }
             //animator.SetBool("Num3", true);
-            mysfx.PlayOneShot(gosfx);
+            
+            // âœ… VerificaciÃ³n de null antes de reproducir sonido
+            PlaySoundSafe(gosfx);
         }
-
+    }
+    
+    /// <summary>
+    /// âœ… MÃ©todo seguro para reproducir sonidos con verificaciÃ³n de null
+    /// </summary>
+    private void PlaySoundSafe(AudioClip clip)
+    {
+        // Verificar que tanto el AudioSource como el AudioClip no sean null
+        if (mysfx != null && clip != null)
+        {
+            try
+            {
+                mysfx.PlayOneShot(clip);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"LHS_CountdownController: Error al reproducir sonido: {e.Message}");
+            }
+        }
+        else
+        {
+            if (mysfx == null)
+            {
+                Debug.LogWarning("LHS_CountdownController: AudioSource (mysfx) es null - no se puede reproducir sonido");
+            }
+            if (clip == null)
+            {
+                Debug.LogWarning("LHS_CountdownController: AudioClip es null - no se puede reproducir sonido");
+            }
+        }
     }
 }
 

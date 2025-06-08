@@ -5,11 +5,11 @@ using UnityEngine;
 public class IAPlayerSimple : MonoBehaviour
 {
     [Header("Configuración de IA")]
-    public float moveSpeed = 3f;
+    public float moveSpeed = 8f; // ⚡ AUMENTADO de 3f a 8f - Más rápidas  
     public float detectionRadius = 8f;
     public float safeDistance = 3f;
-    public float wanderRadius = 5f;
-    public float updateFrequency = 0.5f;
+    public float wanderRadius = 8f; // ⚡ AUMENTADO de 5f a 8f - Más exploración
+    public float updateFrequency = 0.2f; // ⚡ REDUCIDO de 0.5f a 0.2f - Más responsivas
     
     [Header("Configuración de Errores")]
     [Range(0f, 1f)]
@@ -92,12 +92,12 @@ public class IAPlayerSimple : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         col = GetComponent<Collider>();
         
-        // Configurar Rigidbody para mejor control pero menos restrictivo
+        // Configurar Rigidbody para movimiento más natural como en single player
         if (rb != null)
         {
             rb.freezeRotation = true;      // Evitar rotaciones indeseadas
-            rb.drag = 3f;                  // Reducido de 5f a 3f - menos resistencia
-            rb.angularDrag = 8f;           // Reducido de 10f a 8f
+            rb.drag = 1f;                  // ⚡ REDUCIDO de 3f a 1f - Mucho menos resistencia
+            rb.angularDrag = 5f;           // ⚡ REDUCIDO de 8f a 5f - Rotación más libre
             rb.mass = 1f;                  // Masa estándar
             rb.useGravity = true;          // ✅ SIEMPRE activar gravedad para caída rápida
             rb.interpolation = RigidbodyInterpolation.Interpolate; // Movimiento suave
@@ -132,6 +132,12 @@ public class IAPlayerSimple : MonoBehaviour
 
     private void Update()
     {
+        // ⏸️ NO MOVER DURANTE EL COUNTDOWN (respeta Time.timeScale)
+        if (Time.timeScale == 0f)
+        {
+            return; // No hacer nada durante el countdown
+        }
+        
         CheckGroundStatus();
         
         // ✅ VERIFICAR SI CAYÓ DEMASIADO BAJO (ELIMINACIÓN)
@@ -318,6 +324,9 @@ public class IAPlayerSimple : MonoBehaviour
 
     private void MoveTowardsTarget()
     {
+        // ⏸️ NO MOVER DURANTE EL COUNTDOWN
+        if (Time.timeScale == 0f) return;
+        
         // Remover la restricción de solo moverse cuando está grounded - ahora puede intentar moverse
         if (rb == null) return;
         
@@ -357,12 +366,12 @@ public class IAPlayerSimple : MonoBehaviour
                 if (currentState == IAState.Fleeing) currentSpeed *= 1.5f;
                 
                 // Mover usando AddForce para mejor control físico
-                Vector3 moveForce = direction * currentSpeed * 15f; // Aumentado de 10f a 15f para más fuerza
+                Vector3 moveForce = direction * currentSpeed * 25f; // ⚡ AUMENTADO de 15f a 25f - Mucha más fuerza
                 rb.AddForce(moveForce, ForceMode.Force);
                 
-                // Limitar velocidad máxima de forma más permisiva
+                // Limitar velocidad máxima de forma muy permisiva
                 Vector3 horizontalVelocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
-                float maxSpeed = currentSpeed * 1.2f; // 20% más permisivo
+                float maxSpeed = currentSpeed * 1.8f; // ⚡ AUMENTADO de 1.2f a 1.8f - 80% más permisivo
                 
                 if (horizontalVelocity.magnitude > maxSpeed)
                 {
@@ -474,7 +483,8 @@ public class IAPlayerSimple : MonoBehaviour
     {
         while (gameObject != null)
         {
-            if (!isConfused && Time.time - lastUpdateTime > updateFrequency)
+            // ⏸️ NO ACTUALIZAR DECISIONES DURANTE EL COUNTDOWN
+            if (Time.timeScale > 0f && !isConfused && Time.time - lastUpdateTime > updateFrequency)
             {
                 UpdateIADecision();
                 lastUpdateTime = Time.time;
@@ -579,8 +589,8 @@ public class IAPlayerSimple : MonoBehaviour
 
     private void HandleWandering()
     {
-        // Cambiar objetivo de wandering cada cierto tiempo
-        if (Time.time - lastWanderTime > 3f || Vector3.Distance(transform.position, wanderTarget) < 1f)
+        // Cambiar objetivo de wandering más frecuentemente para más dinamismo  
+        if (Time.time - lastWanderTime > 1.5f || Vector3.Distance(transform.position, wanderTarget) < 1f) // ⚡ REDUCIDO de 3f a 1.5f
         {
             Vector3 newTarget = FindSafeWanderPosition();
             

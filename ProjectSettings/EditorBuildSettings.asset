@@ -29,4 +29,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Ending.unity
     guid: cfa4f9dc78d312c43b9971b94595acbc
+  - enabled: 1
+    path: Assets/Scenes/FinalFracaso.unity
+    guid: 33b02fe83c4f43b48b444e2cb22da672
   m_configObjects: {}

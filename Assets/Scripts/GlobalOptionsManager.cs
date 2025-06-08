@@ -42,7 +42,9 @@ public class GlobalOptionsManager : MonoBehaviour
     // Referencias actuales
     private OptionsMenu currentOptionsMenu;
     private Canvas currentUICanvas;
+    #pragma warning disable 0414
     private bool isInitialized = false;
+    #pragma warning restore 0414
     
     // Settings cache
     private float masterVolume = 0.75f;
@@ -86,6 +88,13 @@ public class GlobalOptionsManager : MonoBehaviour
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         Debug.Log($"🔄 Escena cargada: {scene.name}");
+        
+        // 🆕 Detectar si es escena final (Ending o FinalFracaso)
+        if (scene.name == "Ending" || scene.name == "FinalFracaso")
+        {
+            Debug.Log($"🎬 Escena final detectada: {scene.name}");
+        }
+        
         SetupCurrentScene();
     }
     
