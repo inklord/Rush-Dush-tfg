@@ -8,41 +8,47 @@ public class SceneChange : MonoBehaviour
 {
     void Update()
     {
-        if (SceneManager.GetActiveScene().name == "WaitingUser")
+        string currentScene = SceneManager.GetActiveScene().name;
+        
+        if (currentScene == "WaitingUser")
         {
-            if (Input.GetKeyDown(KeyCode.BackQuote))
+            if (Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.Masculine))
             {
                 SceneManager.LoadScene("Intro");
             }
         }
 
-        if (SceneManager.GetActiveScene().name == "Intro")
+        if (currentScene == "Intro")
         {
-            if (Input.GetKeyDown(KeyCode.BackQuote))
+            // En Intro: permite BackQuote, tecla º (Masculine) y CLICK para continuar
+            if (Input.GetKeyDown(KeyCode.BackQuote) || 
+                Input.GetKeyDown(KeyCode.Masculine) || 
+                Input.GetMouseButtonDown(0))
             {
+                Debug.Log("🎬 SceneChange: Saltando desde Intro a InGame");
                 SceneManager.LoadScene("InGame");
             }
         }
 
-        if (SceneManager.GetActiveScene().name == "InGame")
+        if (currentScene == "InGame")
         {
-            if (Input.GetKeyDown(KeyCode.BackQuote))
+            if (Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.Masculine))
             {
                 SceneManager.LoadScene("Carrera");
             }
         }
 
-        if (SceneManager.GetActiveScene().name == "Carrera")
+        if (currentScene == "Carrera")
         {
-            if (Input.GetKeyDown(KeyCode.BackQuote))
+            if (Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.Masculine))
             {
                 SceneManager.LoadScene("Hexagonia");
             }
         }
 
-        if (SceneManager.GetActiveScene().name == "Hexagonia")
+        if (currentScene == "Hexagonia")
         {
-            if (Input.GetKeyDown(KeyCode.BackQuote))
+            if (Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.Masculine))
             {
                 SceneManager.LoadScene("Ending");
             }
