@@ -12,7 +12,7 @@ public class SceneChange : MonoBehaviour
         
         if (currentScene == "WaitingUser")
         {
-            if (Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.Masculine))
+            if (Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.Tilde))
             {
                 SceneManager.LoadScene("Intro");
             }
@@ -20,9 +20,9 @@ public class SceneChange : MonoBehaviour
 
         if (currentScene == "Intro")
         {
-            // En Intro: permite BackQuote, tecla º (Masculine) y CLICK para continuar
+            // En Intro: permite BackQuote, tecla º/~ y CLICK para continuar
             if (Input.GetKeyDown(KeyCode.BackQuote) || 
-                Input.GetKeyDown(KeyCode.Masculine) || 
+                Input.GetKeyDown(KeyCode.Tilde) || 
                 Input.GetMouseButtonDown(0))
             {
                 Debug.Log("🎬 SceneChange: Saltando desde Intro a InGame");
@@ -32,7 +32,7 @@ public class SceneChange : MonoBehaviour
 
         if (currentScene == "InGame")
         {
-            if (Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.Masculine))
+            if (Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.Tilde))
             {
                 SceneManager.LoadScene("Carrera");
             }
@@ -40,7 +40,7 @@ public class SceneChange : MonoBehaviour
 
         if (currentScene == "Carrera")
         {
-            if (Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.Masculine))
+            if (Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.Tilde))
             {
                 SceneManager.LoadScene("Hexagonia");
             }
@@ -48,7 +48,7 @@ public class SceneChange : MonoBehaviour
 
         if (currentScene == "Hexagonia")
         {
-            if (Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.Masculine))
+            if (Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.Tilde))
             {
                 SceneManager.LoadScene("Ending");
             }
