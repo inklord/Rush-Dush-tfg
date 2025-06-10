@@ -27,6 +27,14 @@ public class GuaranteedPlayerSpawner : MonoBehaviourPunCallbacks
     {
         Debug.Log("🎯 === GUARANTEED PLAYER SPAWNER INICIADO ===");
         
+        // Verificar si ya hay un jugador spawneado
+        if (MasterSpawnController.HasSpawnedPlayer())
+        {
+            Debug.Log("🚫 GuaranteedPlayerSpawner: Ya existe jugador, desactivando spawner");
+            enabled = false;
+            return;
+        }
+        
         // Auto-spawn si está activado
         if (autoSpawnOnJoin && PhotonNetwork.IsConnected)
         {
@@ -106,6 +114,13 @@ public class GuaranteedPlayerSpawner : MonoBehaviourPunCallbacks
     /// </summary>
     void SpawnMyPlayer()
     {
+        // Verificar con MasterSpawnController primero
+        if (!MasterSpawnController.RequestSpawn("GuaranteedPlayerSpawner"))
+        {
+            Debug.Log("🚫 GuaranteedPlayerSpawner: MasterSpawnController denegó el spawn");
+            return;
+        }
+        
         if (!PhotonNetwork.IsConnected)
         {
             Debug.LogError("🚨 No conectado a Photon - No se puede spawnear");
@@ -115,7 +130,7 @@ public class GuaranteedPlayerSpawner : MonoBehaviourPunCallbacks
         Vector3 spawnPosition = GetSpawnPosition();
         Quaternion spawnRotation = Quaternion.identity;
         
-        Debug.Log($"🎮 SPAWNEANDO JUGADOR en posición: {spawnPosition}");
+        Debug.Log($"🎮 GuaranteedPlayerSpawner spawneando jugador en posición: {spawnPosition}");
         Debug.Log($"🎮 ActorNumber: {PhotonNetwork.LocalPlayer.ActorNumber}");
         
         try
@@ -125,7 +140,10 @@ public class GuaranteedPlayerSpawner : MonoBehaviourPunCallbacks
             if (playerObj != null)
             {
                 hasMyPlayer = true;
-                Debug.Log($"✅ JUGADOR SPAWNEADO EXITOSAMENTE: {playerObj.name}");
+                Debug.Log($"✅ GuaranteedPlayerSpawner - Jugador spawneado exitosamente: {playerObj.name}");
+                
+                // Registrar con MasterSpawnController
+                MasterSpawnController.RegisterSpawnedPlayer(playerObj, "GuaranteedPlayerSpawner");
                 
                 // Configurar cámara
                 ConfigureCamera(playerObj);

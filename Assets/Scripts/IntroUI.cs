@@ -4,12 +4,13 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using UnityEngine.Playables;
+using Photon.Pun;
 
 /// <summary>
 /// 🎬 Controlador de la escena Intro con Timeline/Cinemachine
 /// Detecta automáticamente cuando termina la intro y cambia a InGame
 /// </summary>
-public class IntroUI : MonoBehaviour
+public class IntroUI : MonoBehaviourPunCallbacks
 {
     [Header("🎬 Intro UI Components")]
     public GameObject missionUI;
@@ -95,8 +96,11 @@ public class IntroUI : MonoBehaviour
         hasChangedScene = true;
         Debug.Log($"🚀 Cambiando a escena: {nextScene}");
         
-        // Cargar escena de juego
-        SceneManager.LoadScene(nextScene);
+        // Solo el MasterClient puede cambiar la escena
+        if (PhotonNetwork.IsMasterClient)
+        {
+            PhotonNetwork.LoadLevel(nextScene);
+        }
     }
     
     /// <summary>
@@ -105,5 +109,12 @@ public class IntroUI : MonoBehaviour
     public void EndIntro()
     {
         ChangeToInGame();
+    }
+
+    public override void OnDisconnected(Photon.Realtime.DisconnectCause cause)
+    {
+        Debug.LogWarning($"❌ Desconectado de Photon: {cause}");
+        // Si nos desconectamos, volver al lobby
+        SceneManager.LoadScene("Lobby");
     }
 }

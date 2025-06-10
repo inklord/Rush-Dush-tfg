@@ -1,37 +1,58 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
 public class LHS_Camera : MonoBehaviour
 {
-    float x;
-    float y;
-    public float distance = 10;
     public GameObject player;
-
-    // Start is called before the first frame update
+    public float distance = 10f;
+    public float height = 5f;
+    public float smoothSpeed = 5f;
+    
+    private Vector3 targetPosition;
+    
     void Start()
     {
-        
+        // Si no hay jugador asignado, intentar encontrar el jugador local
+        if (player == null)
+        {
+            FindLocalPlayer();
+        }
     }
-
-    // Update is called once per frame
+    
     void LateUpdate()
     {
-        CameraRotate();
+        // Si no hay jugador asignado, intentar encontrarlo
+        if (player == null)
+        {
+            FindLocalPlayer();
+            return;
+        }
+        
+        // Calcular la posiciÃ³n objetivo de la cÃ¡mara
+        targetPosition = player.transform.position;
+        targetPosition.y += height;
+        targetPosition.z -= distance;
+        
+        // Mover la cÃ¡mara suavemente hacia la posiciÃ³n objetivo
+        transform.position = Vector3.Lerp(transform.position, targetPosition, smoothSpeed * Time.deltaTime);
+        
+        // Hacer que la cÃ¡mara mire al jugador
+        transform.LookAt(player.transform.position);
     }
-    void CameraRotate()
+    
+    void FindLocalPlayer()
     {
-        // ¸¶¿ì½º ÁÂ¿ì ÀÌµ¿ ´©Àû
-        x += Input.GetAxis("Mouse X");
-        // ¸¶¿ì½º »óÇÏ ÀÌµ¿ ´©Àû
-        y -= Input.GetAxis("Mouse Y");
-        // ÀÌµ¿·®¿¡ µû¶ó Ä«¸Þ¶ó°¡ ¹Ù¶óº¸´Â ¹æÇâ Á¶Á¤
-        transform.rotation = Quaternion.Euler(y, x, 0);
-        // µ¹¾Æ°¥ ¼ö ÀÖ´Â °¢µµ Á¦ÇÑ
-        y = Mathf.Clamp(y, -10, 30);
-        // Ä«¸Þ¶ó¿Í ÇÃ·¹ÀÌ¾îÀÇ °Å¸®Á¶Á¤
-        Vector3 reDistance = new Vector3(0f, -1.8f, distance);
-        transform.position = player.transform.position - transform.rotation * reDistance;
+        // Buscar todos los PhotonViews en la escena
+        PhotonView[] views = FindObjectsOfType<PhotonView>();
+        foreach (PhotonView view in views)
+        {
+            // Buscar el jugador que nos pertenece
+            if (view.IsMine && view.gameObject.GetComponent<LHS_MainPlayer>() != null)
+            {
+                player = view.gameObject;
+                Debug.Log("âœ… CÃ¡mara: Jugador local encontrado");
+                return;
+            }
+        }
     }
 }

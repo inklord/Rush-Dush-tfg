@@ -10,14 +10,6 @@ public class SceneChange : MonoBehaviour
     {
         string currentScene = SceneManager.GetActiveScene().name;
         
-        if (currentScene == "WaitingUser")
-        {
-            if (Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.Tilde))
-            {
-                SceneManager.LoadScene("Intro");
-            }
-        }
-
         if (currentScene == "Intro")
         {
             // En Intro: permite BackQuote, tecla º/~ y CLICK para continuar
@@ -62,10 +54,10 @@ public class SceneChange : MonoBehaviour
 
     public void LobbySceneChange()
     {
-        SceneManager.LoadScene("WaitingUser");
+        SceneManager.LoadScene("Intro");
     }
 
-    public void WaitingPalyersSceneChange()
+    public void StartGameSceneChange()
     {
         SceneManager.LoadScene("Intro");
     }

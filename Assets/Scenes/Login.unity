@@ -713,11 +713,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   targetResolution: {x: 1920, y: 1080}
   forceFullscreen: 1
-  enableDebugLogs: 1
+  enableDebugLogs: 0
   applyInAwake: 1
-  applyInStart: 1
-  applyInFirstUpdate: 1
-  applyEveryFrame: 1
+  applyInStart: 0
+  applyInFirstUpdate: 0
+  applyEveryFrame: 0
 --- !u!4 &1009221267
 Transform:
   m_ObjectHideFlags: 0

@@ -6,6 +6,7 @@ using UnityEngine.SceneManagement;
 using Photon.Pun;
 using Photon.Realtime;
 using TMPro;
+using ExitGames.Client.Photon;
 
 /// <summary>
 /// 🌐 Gestor principal del Lobby para modo multijugador
@@ -35,13 +36,14 @@ public class LobbyManager : MonoBehaviourPunCallbacks
     [Header("⚙️ Game Settings")]
     public int maxPlayersPerRoom = 20;         // Máximo jugadores por sala
     public string gameVersion = "1.0";         // Versión del juego
-    public string[] gameScenes = { "WaitingUser", "InGame", "Carrera", "Hexagonia" }; // Escenas del juego
+    public string[] gameScenes = { "InGame", "Carrera", "Hexagonia" }; // Escenas del juego (sin WaitingUser)
     
     // Variables privadas
     private string defaultPlayerName = "Player";
     private string defaultRoomName = "FallGuysRoom";
     private bool isConnecting = false;
     private bool isInMultiplayerMode = false;
+    private bool isLoadingScene = false; // Protección contra ejecuciones múltiples
     
     // Estados de conexión
     private enum LobbyState
@@ -54,17 +56,68 @@ public class LobbyManager : MonoBehaviourPunCallbacks
     }
     
     private LobbyState currentState = LobbyState.MainMenu;
+
+    void Awake()
+    {
+        // Verificar si necesitamos agregar un PhotonView
+        if (photonView == null)
+        {
+            Debug.LogWarning("⚠️ PhotonView no encontrado - Agregando uno nuevo");
+            gameObject.AddComponent<PhotonView>();
+        }
+        
+        // Asegurar que existe un MasterSpawnController
+        if (FindObjectOfType<MasterSpawnController>() == null)
+        {
+            GameObject spawnerObj = new GameObject("MasterSpawnController");
+            spawnerObj.AddComponent<MasterSpawnController>();
+            Debug.Log("🎯 MasterSpawnController creado automáticamente");
+        }
+    }
     
     #region Unity Lifecycle
     
     void Start()
     {
+        // Validar y limpiar array de escenas
+        ValidateGameScenes();
+        
         // Configuración inicial
         SetupUI();
         InitializePhoton();
         UpdateUI();
         
         Debug.Log("🌐 LobbyManager iniciado");
+    }
+    
+    void ValidateGameScenes()
+    {
+        // Asegurar que el array no contenga WaitingUser
+        if (gameScenes != null)
+        {
+            List<string> validScenes = new List<string>();
+            foreach (string scene in gameScenes)
+            {
+                if (!string.IsNullOrEmpty(scene) && scene != "WaitingUser")
+                {
+                    validScenes.Add(scene);
+                }
+            }
+            
+            // Si se eliminó WaitingUser, actualizar el array
+            if (validScenes.Count != gameScenes.Length)
+            {
+                gameScenes = validScenes.ToArray();
+                Debug.Log($"🔧 Array de escenas limpiado: [{string.Join(", ", gameScenes)}]");
+            }
+        }
+        
+        // Si el array está vacío o es null, usar valores por defecto
+        if (gameScenes == null || gameScenes.Length == 0)
+        {
+            gameScenes = new string[] { "InGame", "Carrera", "Hexagonia" };
+            Debug.Log("🔧 Array de escenas inicializado con valores por defecto");
+        }
     }
     
     void Update()
@@ -152,15 +205,48 @@ public class LobbyManager : MonoBehaviourPunCallbacks
     {
         // Configurar Photon
         PhotonNetwork.AutomaticallySyncScene = true;
+        PhotonNetwork.EnableCloseConnection = true;
         PhotonNetwork.GameVersion = gameVersion;
-        
+
+        // Asegurar que estamos usando la configuración del PhotonServerSettings
+        if (string.IsNullOrEmpty(PhotonNetwork.PhotonServerSettings.AppSettings.AppIdRealtime))
+        {
+            Debug.LogError("❌ AppID no configurado en PhotonServerSettings");
+            ShowStatus("❌ Error de configuración", Color.red);
+            return;
+        }
+
+        // Usar la región configurada en PhotonServerSettings
+        string configuredRegion = PhotonNetwork.PhotonServerSettings.AppSettings.FixedRegion;
+        if (!string.IsNullOrEmpty(configuredRegion))
+        {
+            Debug.Log($"🌍 Usando región configurada: {configuredRegion}");
+            PhotonNetwork.PhotonServerSettings.AppSettings.FixedRegion = configuredRegion;
+        }
+        else
+        {
+            Debug.Log("🌍 Usando selección automática de región");
+            PhotonNetwork.PhotonServerSettings.AppSettings.FixedRegion = ""; // Asegurar que está vacío para auto-selección
+        }
+
         // Configurar nombre del jugador
-        if (PhotonNetwork.NickName == string.Empty)
+        if (string.IsNullOrEmpty(PhotonNetwork.NickName))
         {
             PhotonNetwork.NickName = defaultPlayerName + Random.Range(1000, 9999);
         }
-        
-        Debug.Log($"🔧 Photon configurado - Versión: {gameVersion}");
+
+        Debug.Log($"🔧 Photon configurado - Versión: {gameVersion}, AutoSync: {PhotonNetwork.AutomaticallySyncScene}, AppID: {PhotonNetwork.PhotonServerSettings.AppSettings.AppIdRealtime}, Región: {configuredRegion}");
+
+        // Si ya estamos conectados pero en el servidor equivocado, reconectar
+        if (PhotonNetwork.IsConnected && PhotonNetwork.Server != ServerConnection.MasterServer)
+        {
+            Debug.Log("🔄 Reconectando al MasterServer...");
+            PhotonNetwork.Disconnect();
+        }
+        else if (!PhotonNetwork.IsConnected)
+        {
+            ConnectToPhoton();
+        }
     }
     
     #endregion
@@ -180,15 +266,15 @@ public class LobbyManager : MonoBehaviourPunCallbacks
             PhotonNetwork.Disconnect();
         }
         
-        // Ir a la secuencia normal del juego
+        // Ir a la secuencia normal del juego (saltando WaitingUser)
         SceneChange sceneChanger = FindObjectOfType<SceneChange>();
         if (sceneChanger != null)
         {
-            sceneChanger.LobbySceneChange();
+            sceneChanger.LobbySceneChange(); // Esto ahora va a "Intro"
         }
         else
         {
-            SceneManager.LoadScene("WaitingUser");
+            SceneManager.LoadScene("Intro"); // Directamente a Intro sin WaitingUser
         }
     }
     
@@ -246,9 +332,29 @@ public class LobbyManager : MonoBehaviourPunCallbacks
     /// </summary>
     public void CreateRoom()
     {
-        if (!PhotonNetwork.IsConnectedAndReady)
+        if (!PhotonNetwork.IsConnected)
         {
-            ShowStatus("❌ No conectado a Photon", Color.red);
+            Debug.LogError("❌ No conectado a Photon Network");
+            ShowStatus("❌ No conectado a Photon Network", Color.red);
+            StartCoroutine(ReconnectAndRetry(CreateRoom));
+            return;
+        }
+
+        // Si estamos en el GameServer, necesitamos volver al MasterServer
+        if (PhotonNetwork.Server == ServerConnection.GameServer)
+        {
+            Debug.Log("🔄 Volviendo al MasterServer para crear sala...");
+            ShowStatus("🔄 Preparando sala...", Color.yellow);
+            PhotonNetwork.LeaveRoom();  // Esto nos devolverá al MasterServer
+            return;
+        }
+
+        // Si no estamos listos en el MasterServer, esperar
+        if (!PhotonNetwork.InLobby)
+        {
+            Debug.Log("🔄 Esperando conexión al lobby...");
+            ShowStatus("🔄 Conectando al lobby...", Color.yellow);
+            PhotonNetwork.JoinLobby();
             return;
         }
         
@@ -271,7 +377,8 @@ public class LobbyManager : MonoBehaviourPunCallbacks
         {
             MaxPlayers = maxPlayersPerRoom,
             IsVisible = true,
-            IsOpen = true
+            IsOpen = true,
+            PublishUserId = true
         };
         
         Debug.Log($"🏗️ Creando sala: {roomName}");
@@ -325,8 +432,118 @@ public class LobbyManager : MonoBehaviourPunCallbacks
         Debug.Log("🚀 Iniciando juego multijugador...");
         ShowStatus("🚀 Iniciando juego...", Color.green);
         
-        // Cargar la primera escena del juego
-        PhotonNetwork.LoadLevel(gameScenes[0]);
+        // Asegurar que la sincronización automática está activada
+        PhotonNetwork.AutomaticallySyncScene = true;
+        
+        // Establecer el estado del juego en las propiedades de la sala
+        var props = new ExitGames.Client.Photon.Hashtable();
+        props.Add("GameState", "Starting");
+        PhotonNetwork.CurrentRoom.SetCustomProperties(props);
+        
+        // Notificar SOLO a otros jugadores (NO al host para evitar duplicación)
+        photonView.RPC("OnGameStarting", RpcTarget.Others);
+        
+        // El host ejecuta directamente su preparación
+        Debug.Log("🎮 Host preparando inicio de juego...");
+        if (multiplayerPanel != null)
+            multiplayerPanel.SetActive(false);
+        if (connectionPanel != null)
+            connectionPanel.SetActive(false);
+        
+        // Esperar un breve momento antes de cargar la escena para asegurar que todos reciban el RPC
+        StartCoroutine(LoadGameSceneWithDelay());
+    }
+    
+    [PunRPC]
+    void OnGameStarting()
+    {
+        Debug.Log("🎮 Recibiendo notificación de inicio de juego...");
+        ShowStatus("🎮 Iniciando juego...", Color.green);
+        
+        // Asegurar que la sincronización está activada en todos los clientes
+        PhotonNetwork.AutomaticallySyncScene = true;
+        
+        // Preparar la interfaz para la transición
+        if (multiplayerPanel != null)
+            multiplayerPanel.SetActive(false);
+        if (connectionPanel != null)
+            connectionPanel.SetActive(false);
+    }
+    
+    /// <summary>
+    /// Cargar la escena del juego con un pequeño delay para asegurar sincronización
+    /// </summary>
+    private System.Collections.IEnumerator LoadGameSceneWithDelay()
+    {
+        // Protección contra ejecuciones múltiples
+        if (isLoadingScene)
+        {
+            Debug.LogWarning("⚠️ Ya se está cargando una escena, cancelando ejecución duplicada");
+            yield break;
+        }
+        
+        isLoadingScene = true;
+        Debug.Log("🔒 Iniciando carga de escena (bloqueando ejecuciones duplicadas)");
+        
+        // Esperar un frame para asegurar que el RPC se procesó
+        yield return new WaitForEndOfFrame();
+        yield return new WaitForSeconds(0.5f);
+        
+        if (PhotonNetwork.IsMasterClient)
+        {
+            // Seleccionar escena a cargar (forzando que NO sea WaitingUser)
+            string sceneToLoad = "InGame"; // Default seguro
+            
+            if (gameScenes != null && gameScenes.Length > 0)
+            {
+                // Buscar la primera escena que NO sea WaitingUser
+                foreach (string scene in gameScenes)
+                {
+                    if (!string.IsNullOrEmpty(scene) && scene != "WaitingUser")
+                    {
+                        sceneToLoad = scene;
+                        break;
+                    }
+                }
+            }
+            
+            Debug.Log($"🎮 Cargando escena directamente: {sceneToLoad} (Array: [{string.Join(", ", gameScenes)}])");
+            
+            // Validación final de seguridad
+            if (sceneToLoad == "WaitingUser")
+            {
+                sceneToLoad = "InGame";
+                Debug.LogWarning("⚠️ Forzando cambio de WaitingUser a InGame");
+            }
+            
+            // Actualizar el estado antes de cargar
+            var props = new ExitGames.Client.Photon.Hashtable();
+            props.Add("GameState", "LoadingGame");
+            props.Add("TargetScene", sceneToLoad);
+            PhotonNetwork.CurrentRoom.SetCustomProperties(props);
+            
+            // Cargar la escena del juego directamente - PUN2 sincroniza automáticamente
+            PhotonNetwork.LoadLevel(sceneToLoad);
+        }
+        else
+        {
+            Debug.Log("🔄 Cliente esperando que el MasterClient cargue la escena");
+        }
+        
+        // Resetear flag después de cargar (aunque se destruirá el objeto al cambiar escena)
+        isLoadingScene = false;
+    }
+    
+
+    
+    public override void OnMasterClientSwitched(Photon.Realtime.Player newMasterClient)
+    {
+        base.OnMasterClientSwitched(newMasterClient);
+        
+        Debug.Log($"👑 Nuevo Master Client: {newMasterClient.NickName}");
+        ShowStatus($"👑 Nuevo Master Client: {newMasterClient.NickName}", Color.cyan);
+
+        UpdateUI();
     }
     
     #endregion
@@ -342,8 +559,14 @@ public class LobbyManager : MonoBehaviourPunCallbacks
         
         Debug.Log("🌐 Conectando a Photon...");
         ShowStatus("🌐 Conectando...", Color.yellow);
-        
-        PhotonNetwork.ConnectUsingSettings();
+
+        // Intentar conectar
+        if (!PhotonNetwork.ConnectUsingSettings())
+        {
+            Debug.LogError("❌ Error al iniciar conexión");
+            ShowStatus("❌ Error de conexión", Color.red);
+            isConnecting = false;
+        }
     }
     
     #endregion
@@ -361,8 +584,14 @@ public class LobbyManager : MonoBehaviourPunCallbacks
         
         if (startGameButton != null)
         {
-            startGameButton.gameObject.SetActive(PhotonNetwork.InRoom);
-            startGameButton.interactable = PhotonNetwork.IsMasterClient && PhotonNetwork.CurrentRoom?.PlayerCount >= 2;
+            bool canStartGame = PhotonNetwork.InRoom && PhotonNetwork.IsMasterClient && PhotonNetwork.CurrentRoom.PlayerCount >= 2;
+            startGameButton.gameObject.SetActive(PhotonNetwork.InRoom && PhotonNetwork.IsMasterClient);
+            startGameButton.interactable = canStartGame;
+            
+            if (PhotonNetwork.InRoom && PhotonNetwork.IsMasterClient)
+            {
+                Debug.Log($"🎮 Estado del botón Start Game - Activo: {startGameButton.gameObject.activeSelf}, Interactuable: {startGameButton.interactable}, Jugadores: {PhotonNetwork.CurrentRoom.PlayerCount}");
+            }
         }
         
         // Actualizar texto de estado
@@ -473,10 +702,17 @@ public class LobbyManager : MonoBehaviourPunCallbacks
     
     public override void OnConnectedToMaster()
     {
-        Debug.Log("✅ Conectado al Master Server de Photon");
+        Debug.Log($"✅ Conectado al Master Server de Photon en región: {PhotonNetwork.CloudRegion}");
         
         isConnecting = false;
         currentState = LobbyState.Connected;
+        
+        // Unirse al lobby automáticamente
+        if (!PhotonNetwork.InLobby)
+        {
+            Debug.Log("🔄 Uniéndose al lobby...");
+            PhotonNetwork.JoinLobby();
+        }
         
         ShowStatus($"✅ Conectado ({PhotonNetwork.CloudRegion})", Color.green);
         
@@ -489,14 +725,22 @@ public class LobbyManager : MonoBehaviourPunCallbacks
         UpdateUI();
     }
     
+    public override void OnJoinedLobby()
+    {
+        Debug.Log("✅ Unido al lobby");
+        ShowStatus("✅ Listo para crear/unirse a salas", Color.green);
+        UpdateUI();
+    }
+    
     public override void OnDisconnected(DisconnectCause cause)
     {
-        Debug.LogWarning($"❌ Desconectado de Photon: {cause}");
+        base.OnDisconnected(cause);
+        
+        Debug.LogWarning($"❌ Desconectado: {cause}");
+        ShowStatus($"❌ Desconectado: {cause}", Color.red);
         
         isConnecting = false;
         currentState = LobbyState.Disconnected;
-        
-        ShowStatus($"❌ Desconectado: {cause}", Color.red);
         UpdateUI();
     }
     
@@ -513,17 +757,44 @@ public class LobbyManager : MonoBehaviourPunCallbacks
     public override void OnLeftRoom()
     {
         Debug.Log("🚪 Salió de la sala");
-        
         currentState = LobbyState.Connected;
-        ShowStatus("✅ Conectado - Selecciona una opción", Color.green);
         
+        // Si estábamos intentando crear una sala, intentar de nuevo
+        if (isInMultiplayerMode)
+        {
+            StartCoroutine(RetryCreateRoomAfterLeaving());
+        }
+        
+        ShowStatus("✅ Conectado - Selecciona una opción", Color.green);
         UpdateUI();
     }
     
     public override void OnCreateRoomFailed(short returnCode, string message)
     {
-        Debug.LogError($"❌ Error al crear sala: {message}");
-        ShowStatus($"❌ Error al crear sala: {message}", Color.red);
+        Debug.LogError($"❌ Error al crear sala: {message} (código: {returnCode})");
+        
+        // Si la sala ya existe, intentar con otro nombre
+        if (message.Contains("already exist"))
+        {
+            string newRoomName = defaultRoomName + Random.Range(1000, 9999);
+            Debug.Log($"🔄 Reintentando con nuevo nombre: {newRoomName}");
+            
+            if (roomNameInput != null)
+                roomNameInput.text = newRoomName;
+            
+            CreateRoom();
+        }
+        else
+        {
+            ShowStatus($"❌ Error al crear sala: {message}", Color.red);
+            // Si fallamos por otra razón, intentar volver al MasterServer
+            if (PhotonNetwork.Server != ServerConnection.MasterServer)
+            {
+                Debug.Log("🔄 Reconectando al MasterServer...");
+                PhotonNetwork.Disconnect();
+                StartCoroutine(ReconnectAndRetry(CreateRoom));
+            }
+        }
     }
     
     public override void OnJoinRoomFailed(short returnCode, string message)
@@ -553,14 +824,6 @@ public class LobbyManager : MonoBehaviourPunCallbacks
     {
         Debug.Log($"👋 Jugador salió: {otherPlayer.NickName}");
         ShowStatus($"👋 {otherPlayer.NickName} salió", Color.yellow);
-        
-        UpdateUI();
-    }
-    
-    public override void OnMasterClientSwitched(Photon.Realtime.Player newMasterClient)
-    {
-        Debug.Log($"👑 Nuevo host: {newMasterClient.NickName}");
-        ShowStatus($"👑 Nuevo host: {newMasterClient.NickName}", Color.cyan);
         
         UpdateUI();
     }
@@ -622,4 +885,40 @@ public class LobbyManager : MonoBehaviourPunCallbacks
     }
     
     #endregion
+    
+    private IEnumerator ReconnectAndRetry(System.Action actionToRetry)
+    {
+        Debug.Log("🔄 Intentando reconectar...");
+        ConnectToPhoton();
+        
+        float timeout = 0;
+        while (!PhotonNetwork.IsConnected && timeout < 5f)
+        {
+            timeout += Time.deltaTime;
+            yield return null;
+        }
+        
+        if (PhotonNetwork.IsConnected)
+        {
+            Debug.Log("✅ Reconexión exitosa - Reintentando acción");
+            actionToRetry?.Invoke();
+        }
+        else
+        {
+            Debug.LogError("❌ No se pudo reconectar");
+            ShowStatus("❌ Error de conexión", Color.red);
+        }
+    }
+
+    private IEnumerator RetryCreateRoomAfterLeaving()
+    {
+        // Esperar a que volvamos al MasterServer y al lobby
+        yield return new WaitUntil(() => PhotonNetwork.InLobby);
+        yield return new WaitForSeconds(0.5f); // Pequeño delay adicional por seguridad
+        
+        Debug.Log("🔄 Reintentando crear sala después de volver al MasterServer");
+        CreateRoom();
+    }
+
+
 } 

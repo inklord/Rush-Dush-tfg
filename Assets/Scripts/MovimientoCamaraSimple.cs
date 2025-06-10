@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
 /// <summary>
 /// 📹 Sistema de Cámara Simple y Suave - Solo Tercera Persona
@@ -29,6 +30,7 @@ public class MovimientoCamaraSimple : MonoBehaviour
     private float mouseX = 0f;
     private float mouseY = 0f;
     private Vector3 currentVelocity;
+    private bool isFollowingLocalPlayer = false;
     
     // Sistema de shake simplificado
     private Vector3 shakeOffset = Vector3.zero;
@@ -43,22 +45,29 @@ public class MovimientoCamaraSimple : MonoBehaviour
         // Buscar jugador si no está asignado
         if (player == null)
         {
-            StartCoroutine(FindPlayer());
+            StartCoroutine(FindLocalPlayer());
         }
         
         Debug.Log("📹 Cámara simple inicializada");
     }
     
-    IEnumerator FindPlayer()
+    IEnumerator FindLocalPlayer()
     {
-        while (player == null)
+        yield return new WaitForSeconds(0.5f); // Esperar a que se spawnen los jugadores
+        
+        while (player == null && !isFollowingLocalPlayer)
         {
-            GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
-            if (playerObj != null)
+            GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
+            foreach (GameObject playerObj in players)
             {
-                player = playerObj.transform;
-                Debug.Log("✅ Jugador encontrado automáticamente");
-                break;
+                PhotonView pv = playerObj.GetComponent<PhotonView>();
+                if (pv != null && pv.IsMine)
+                {
+                    SetPlayer(playerObj.transform);
+                    isFollowingLocalPlayer = true;
+                    Debug.Log("✅ Jugador local encontrado y asignado a la cámara");
+                    break;
+                }
             }
             yield return new WaitForSeconds(0.5f);
         }
@@ -131,8 +140,23 @@ public class MovimientoCamaraSimple : MonoBehaviour
     /// </summary>
     public void SetPlayer(Transform newPlayer)
     {
-        player = newPlayer;
-        Debug.Log($"📹 Nuevo jugador asignado: {newPlayer.name}");
+        if (isFollowingLocalPlayer && player != null)
+        {
+            Debug.LogWarning("⚠️ La cámara ya está siguiendo al jugador local");
+            return;
+        }
+
+        PhotonView pv = newPlayer.GetComponent<PhotonView>();
+        if (pv != null && pv.IsMine)
+        {
+            player = newPlayer;
+            isFollowingLocalPlayer = true;
+            Debug.Log($"📹 Nuevo jugador asignado: {newPlayer.name}");
+        }
+        else
+        {
+            Debug.LogWarning("❌ No se puede asignar un jugador remoto a la cámara");
+        }
     }
     
     /// <summary>

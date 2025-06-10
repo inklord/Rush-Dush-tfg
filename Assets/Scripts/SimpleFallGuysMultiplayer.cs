@@ -1,11 +1,15 @@
 using UnityEngine;
 using Photon.Pun;
+using System.Collections.Generic;
+using Photon.Realtime;
+using ExitGames.Client.Photon;
 
 /// <summary>
 /// 🎯 FALL GUYS MULTIPLAYER - SISTEMA UNIVERSAL
 /// Funciona en TODAS las escenas: Carreras, Hexagonia, InGame, etc.
 /// Se adapta automáticamente al tipo de escena
 /// </summary>
+[RequireComponent(typeof(PhotonView))]
 public class SimpleFallGuysMultiplayer : MonoBehaviourPunCallbacks
 {
     [Header("🎮 Configuración")]
@@ -16,312 +20,216 @@ public class SimpleFallGuysMultiplayer : MonoBehaviourPunCallbacks
     [Header("🎯 Auto-detección de Escena")]
     public bool autoDetectSceneType = true;
     
+    [Header("Player Settings")]
+    public GameObject playerPrefab;
+    public float respawnHeight = -10f;
+    public bool enableDebugLogs = true;
+
+    // Referencias privadas
+    private Dictionary<Photon.Realtime.Player, GameObject> playerList = new Dictionary<Photon.Realtime.Player, GameObject>();
     private bool hasSpawned = false;
-    private GameObject myPlayer;
-    private string currentSceneType = "";
-    private static SimpleFallGuysMultiplayer instance;
-    
-    void Start()
+    private Vector3 lastSpawnPosition;
+
+    void Awake()
     {
-        // Sistema de persistencia entre escenas
-        if (persistBetweenScenes)
+        // Verificar si ya hay un jugador spawneado
+        if (MasterSpawnController.HasSpawnedPlayer())
         {
-            if (instance == null)
-            {
-                instance = this;
-                DontDestroyOnLoad(gameObject);
-                Debug.Log("🎯 SimpleFallGuysMultiplayer - Modo persistente activado");
-            }
-            else if (instance != this)
-            {
-                Debug.Log("🎯 SimpleFallGuysMultiplayer ya existe - Eliminando duplicado");
-                Destroy(gameObject);
-                return;
-            }
-        }
-        
-        // Detectar tipo de escena automáticamente
-        DetectSceneType();
-        
-        Debug.Log($"🎯 SimpleFallGuysMultiplayer iniciado en escena: {currentSceneType}");
-        
-        // Optimizar IAs para multiplayer
-        OptimizeAIsForMultiplayer();
-        
-        // Si ya estoy en una sala, spawnear jugador
-        if (PhotonNetwork.InRoom)
-        {
-            Invoke("SpawnPlayer", 1f);
-        }
-    }
-    
-    public override void OnJoinedRoom()
-    {
-        Debug.Log("✅ Me uní a la sala - Spawneando jugador");
-        Invoke("SpawnPlayer", 1f);
-    }
-    
-    public override void OnPlayerEnteredRoom(Photon.Realtime.Player newPlayer)
-    {
-        Debug.Log($"✅ Nuevo jugador entró a la sala: {newPlayer.NickName}");
-        // El jugador que entra ya manejará su propio spawn
-        // Pero yo (master client) necesito verificar que veo a todos
-        Invoke("RefreshPlayerVisibility", 2f);
-    }
-    
-    void SpawnPlayer()
-    {
-        // No spawnear en escenas de menú
-        if (currentSceneType == "Lobby" || currentSceneType == "Login" || currentSceneType == "WaitingUser")
-        {
-            Debug.Log("📋 No spawneando jugador en escena de menú");
+            Debug.Log("🚫 SimpleFallGuysMultiplayer: Ya existe jugador, desactivando spawner");
+            enabled = false;
             return;
         }
         
-        // Solo spawnear si no tengo jugador ya
-        if (hasSpawned || myPlayer != null) return;
-        
-        // Verificar que no tenga ya un jugador
-        GameObject[] existingPlayers = GameObject.FindGameObjectsWithTag("Player");
-        foreach (GameObject player in existingPlayers)
+        // Verificar si ya existe una instancia
+        SimpleFallGuysMultiplayer[] managers = FindObjectsOfType<SimpleFallGuysMultiplayer>();
+        if (managers.Length > 1)
         {
-            PhotonView pv = player.GetComponent<PhotonView>();
-            if (pv != null && pv.IsMine)
+            Debug.LogWarning("⚠️ Múltiples instancias de SimpleFallGuysMultiplayer detectadas - destruyendo duplicado");
+            Destroy(gameObject);
+            return;
+        }
+
+        // Persistir entre escenas si está configurado
+        if (persistBetweenScenes)
+        {
+            DontDestroyOnLoad(gameObject);
+        }
+
+        // Cargar prefab si no está asignado
+        if (playerPrefab == null)
+        {
+            Debug.Log("🔍 Buscando prefab NetworkPlayer en Resources...");
+            playerPrefab = Resources.Load<GameObject>("NetworkPlayer");
+            if (playerPrefab == null)
             {
-                Debug.Log("✅ Ya tengo un jugador");
-                myPlayer = player;
-                hasSpawned = true;
-                SetupCamera();
+                Debug.LogError($"❌ No se encontró el prefab 'NetworkPlayer' en Resources");
+                return;
+            }
+            else
+            {
+                // Verificar componentes del prefab
+                PhotonView pv = playerPrefab.GetComponent<PhotonView>();
+                LHS_MainPlayer player = playerPrefab.GetComponent<LHS_MainPlayer>();
+                Animator anim = playerPrefab.GetComponentInChildren<Animator>();
+
+                string status = "✅ Prefab NetworkPlayer encontrado con:\n";
+                status += pv != null ? "- PhotonView ✓\n" : "- PhotonView ✗\n";
+                status += player != null ? "- LHS_MainPlayer ✓\n" : "- LHS_MainPlayer ✗\n";
+                status += anim != null ? "- Animator ✓\n" : "- Animator ✗\n";
+                Debug.Log(status);
+
+                // Configurar PhotonView si existe
+                if (pv != null && pv.ObservedComponents.Count == 0)
+                {
+                    Debug.Log("⚙️ Configurando PhotonView del prefab...");
+                    if (player != null)
+                    {
+                        pv.ObservedComponents = new List<Component> { player };
+                        pv.Synchronization = ViewSynchronization.UnreliableOnChange;
+                    }
+                }
+            }
+        }
+
+        Debug.Log("✅ SimpleFallGuysMultiplayer inicializado correctamente");
+    }
+
+    private void SpawnPlayer()
+    {
+        // Verificar con MasterSpawnController primero
+        if (!MasterSpawnController.RequestSpawn("SimpleFallGuysMultiplayer"))
+        {
+            Debug.Log("🚫 SimpleFallGuysMultiplayer: MasterSpawnController denegó el spawn");
+            return;
+        }
+        
+        Debug.Log($"🎮 SimpleFallGuysMultiplayer intentando spawn de jugador...\nEstado actual:\n- En sala: {PhotonNetwork.InRoom}\n- Conectado: {PhotonNetwork.IsConnected}\n- Prefab listo: {playerPrefab != null}");
+
+        // Verificar si ya tenemos un jugador local
+        if (hasSpawned || playerList.ContainsKey(PhotonNetwork.LocalPlayer))
+        {
+            Debug.LogWarning("⚠️ Ya existe un jugador local - Evitando spawn duplicado");
+            return;
+        }
+
+        // Verificar que estamos en una sala
+        if (!PhotonNetwork.InRoom)
+        {
+            Debug.LogError("❌ No estamos en una sala - No se puede hacer spawn");
+            return;
+        }
+
+        // Verificar que el prefab está listo
+        if (playerPrefab == null)
+        {
+            Debug.Log("🔄 Intentando cargar prefab NetworkPlayer...");
+            playerPrefab = Resources.Load<GameObject>("NetworkPlayer");
+            if (playerPrefab == null)
+            {
+                Debug.LogError("❌ No se pudo cargar el prefab 'NetworkPlayer'");
                 return;
             }
         }
-        
-        // Spawnear mi jugador
-        Vector3 spawnPos = GetSpawnPosition();
-        myPlayer = PhotonNetwork.Instantiate(playerPrefabName, spawnPos, Quaternion.identity);
-        
-        if (myPlayer != null)
+
+        try
         {
-            hasSpawned = true;
-            Debug.Log($"✅ Mi jugador spawneado: {myPlayer.name}");
-            SetupCamera();
-        }
-    }
-    
-    Vector3 GetSpawnPosition()
-    {
-        if (spawnPoints.Length > 0)
-        {
-            int index = PhotonNetwork.LocalPlayer.ActorNumber % spawnPoints.Length;
-            return spawnPoints[index].position;
-        }
-        
-        // Posición por ActorNumber
-        int actorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
-        return new Vector3(actorNumber * 3f, 1f, 0f);
-    }
-    
-    void SetupCamera()
-    {
-        if (myPlayer == null) return;
-        
-        // Buscar cámara simple
-        MovimientoCamaraSimple camera = FindObjectOfType<MovimientoCamaraSimple>();
-        if (camera != null)
-        {
-            camera.player = myPlayer.transform;
-            Debug.Log("✅ Cámara configurada");
-        }
-    }
-    
-    void RefreshPlayerVisibility()
-    {
-        Debug.Log("🔄 Actualizando visibilidad de jugadores...");
-        
-        // Contar todos los jugadores en la escena
-        GameObject[] allPlayers = GameObject.FindGameObjectsWithTag("Player");
-        int myPlayers = 0;
-        int remotePlayers = 0;
-        
-        foreach (GameObject player in allPlayers)
-        {
-            PhotonView pv = player.GetComponent<PhotonView>();
-            if (pv != null)
-            {
-                if (pv.IsMine)
-                {
-                    myPlayers++;
-                    Debug.Log($"✅ Mi jugador: {player.name}");
-                }
-                else
-                {
-                    remotePlayers++;
-                    Debug.Log($"🌐 Jugador remoto visible: {player.name} (Actor: {pv.OwnerActorNr})");
-                }
-            }
-        }
-        
-        Debug.Log($"📊 Total visible: {myPlayers} míos + {remotePlayers} remotos = {allPlayers.Length}");
-        
-        // Si no veo jugadores remotos pero debería (hay más de 1 en la sala)
-        if (remotePlayers == 0 && PhotonNetwork.PlayerList.Length > 1)
-        {
-            Debug.LogWarning("⚠️ No veo jugadores remotos - Puede ser problema de sincronización");
-        }
-    }
-    
-    void OptimizeAIsForMultiplayer()
-    {
-        Debug.Log("🤖 Optimizando IAs para velocidad de single player...");
-        
-        // Buscar todas las IAs en el mapa
-        IAPlayerSimple[] ias = FindObjectsOfType<IAPlayerSimple>();
-        
-        foreach (IAPlayerSimple ia in ias)
-        {
-            if (ia != null)
-            {
-                // Asegurar que no tengan PhotonView (no deben sincronizarse por red)
-                PhotonView pv = ia.GetComponent<PhotonView>();
-                if (pv != null)
-                {
-                    Debug.Log($"🤖 ⚠️ Eliminando PhotonView de IA: {ia.name}");
-                    DestroyImmediate(pv);
-                }
-                
-                // Optimizar Rigidbody si es más lento que lo configurado
-                Rigidbody rb = ia.GetComponent<Rigidbody>();
-                if (rb != null && rb.drag > 1.5f)
-                {
-                    rb.drag = 1f; // Reducir drag para más velocidad
-                    Debug.Log($"🤖 ✅ Optimizado drag de IA: {ia.name}");
-                }
-            }
-        }
-        
-        Debug.Log($"🤖 ✅ {ias.Length} IAs optimizadas para velocidad normal");
-    }
-    
-    void DetectSceneType()
-    {
-        string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name.ToLower();
-        
-        if (sceneName.Contains("carrera"))
-        {
-            currentSceneType = "Carrera";
-        }
-        else if (sceneName.Contains("hexagon"))
-        {
-            currentSceneType = "Hexagonia";
-        }
-        else if (sceneName.Contains("ingame") || sceneName.Contains("game"))
-        {
-            currentSceneType = "InGame";
-        }
-        else if (sceneName.Contains("lobby"))
-        {
-            currentSceneType = "Lobby";
-        }
-        else if (sceneName.Contains("ending") || sceneName.Contains("final"))
-        {
-            currentSceneType = "Ending";
-        }
-        else if (sceneName.Contains("waiting"))
-        {
-            currentSceneType = "WaitingUser";
-        }
-        else if (sceneName.Contains("login"))
-        {
-            currentSceneType = "Login";
-        }
-        else
-        {
-            currentSceneType = "Genérica";
-        }
-        
-        // Configuración específica por tipo de escena
-        ConfigureForSceneType();
-    }
-    
-    void ConfigureForSceneType()
-    {
-        Debug.Log($"🎯 Configurando para escena tipo: {currentSceneType}");
-        
-        switch (currentSceneType)
-        {
-            case "Carrera":
-                // Configuración específica para carreras
-                Debug.Log("🏁 Modo Carrera - Spawn en línea de salida");
-                break;
-                
-            case "Hexagonia":
-                // Configuración específica para Hexagonia
-                Debug.Log("🔷 Modo Hexagonia - Spawn distribuido");
-                break;
-                
-            case "InGame":
-                // Configuración genérica de juego
-                Debug.Log("🎮 Modo InGame - Configuración estándar");
-                break;
-                
-            case "Lobby":
-            case "Login":
-            case "WaitingUser":
-                // No spawnear jugadores en escenas de menú
-                Debug.Log("📋 Escena de menú - No spawn automático");
-                break;
-                
-            case "Ending":
-                Debug.Log("🏆 Escena de final - Configuración de victoria");
-                break;
-                
-            default:
-                Debug.Log("🎯 Escena genérica - Configuración por defecto");
-                break;
-        }
-    }
-    
-    void OnGUI()
-    {
-        GUILayout.BeginArea(new Rect(10, 10, 300, 170));
-        GUILayout.Box("🎯 UNIVERSAL MULTIPLAYER");
-        
-        GUILayout.Label($"🎮 Escena: {currentSceneType}");
-        GUILayout.Label($"🌐 Conectado: {PhotonNetwork.IsConnected}");
-        GUILayout.Label($"🏠 En sala: {PhotonNetwork.InRoom}");
-        
-        if (PhotonNetwork.InRoom)
-        {
-            GUILayout.Label($"👥 Jugadores en sala: {PhotonNetwork.PlayerList.Length}");
-            GUILayout.Label($"👤 Mi jugador spawneado: {myPlayer != null}");
+            Debug.Log($"🎯 Iniciando spawn en posición: {GetSpawnPosition()}");
             
-            // Contar jugadores visibles
-            GameObject[] visiblePlayers = GameObject.FindGameObjectsWithTag("Player");
-            int remoteVisible = 0;
-            foreach (GameObject player in visiblePlayers)
+            // Instanciar el jugador en la red
+            GameObject playerObject = PhotonNetwork.Instantiate(
+                "NetworkPlayer", // Usar nombre directo
+                GetSpawnPosition(),
+                Quaternion.identity,
+                0
+            );
+
+            if (playerObject != null)
             {
-                PhotonView pv = player.GetComponent<PhotonView>();
-                if (pv != null && !pv.IsMine) remoteVisible++;
+                // Registrar el jugador
+                playerList[PhotonNetwork.LocalPlayer] = playerObject;
+                hasSpawned = true;
+                lastSpawnPosition = playerObject.transform.position;
+
+                // Registrar con MasterSpawnController
+                MasterSpawnController.RegisterSpawnedPlayer(playerObject, "SimpleFallGuysMultiplayer");
+
+                // Verificar componentes
+                PhotonView pv = playerObject.GetComponent<PhotonView>();
+                LHS_MainPlayer player = playerObject.GetComponent<LHS_MainPlayer>();
+                Animator anim = playerObject.GetComponentInChildren<Animator>();
+
+                string status = "✅ SimpleFallGuysMultiplayer - Jugador spawneado con:\n";
+                status += pv != null ? "- PhotonView ✓\n" : "- PhotonView ✗\n";
+                status += player != null ? "- LHS_MainPlayer ✓\n" : "- LHS_MainPlayer ✗\n";
+                status += anim != null ? "- Animator ✓\n" : "- Animator ✗\n";
+                Debug.Log(status);
             }
-            GUILayout.Label($"👁️ Jugadores remotos visibles: {remoteVisible}");
+            else
+            {
+                Debug.LogError("❌ PhotonNetwork.Instantiate devolvió null");
+            }
         }
-        
-        if (PhotonNetwork.InRoom && !hasSpawned)
+        catch (System.Exception e)
         {
-            if (GUILayout.Button("🎮 SPAWN JUGADOR"))
-            {
-                SpawnPlayer();
-            }
+            Debug.LogError($"❌ Error al hacer spawn: {e.Message}\n{e.StackTrace}");
         }
-        
-        if (PhotonNetwork.InRoom && hasSpawned)
+    }
+
+    private Vector3 GetSpawnPosition()
+    {
+        // Si hay puntos de spawn definidos, usar uno aleatorio
+        if (spawnPoints != null && spawnPoints.Length > 0)
         {
-            if (GUILayout.Button("🔄 REFRESH VISIBILIDAD"))
+            Transform spawnPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
+            return spawnPoint.position;
+        }
+
+        // Si no hay puntos de spawn, usar posición aleatoria segura
+        return new Vector3(
+            Random.Range(-5f, 5f),
+            5f,
+            Random.Range(-5f, 5f)
+        );
+    }
+
+    public override void OnPlayerEnteredRoom(Photon.Realtime.Player newPlayer)
+    {
+        Debug.Log($"👥 Jugador entró a la sala: {newPlayer.NickName}");
+    }
+
+    public override void OnPlayerLeftRoom(Photon.Realtime.Player otherPlayer)
+    {
+        Debug.Log($"👋 Jugador salió de la sala: {otherPlayer.NickName}");
+        
+        // Limpiar referencia del jugador que se fue
+        if (playerList.ContainsKey(otherPlayer))
+        {
+            playerList.Remove(otherPlayer);
+        }
+    }
+
+    void OnDrawGizmos()
+    {
+        if (!enableDebugLogs) return;
+
+        // Visualizar puntos de spawn
+        if (spawnPoints != null)
+        {
+            Gizmos.color = Color.cyan;
+            foreach (Transform point in spawnPoints)
             {
-                RefreshPlayerVisibility();
+                if (point != null)
+                {
+                    Gizmos.DrawWireSphere(point.position, 1f);
+                }
             }
         }
-        
-        GUILayout.EndArea();
+
+        // Visualizar último punto de spawn
+        if (hasSpawned)
+        {
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireSphere(lastSpawnPosition, 1.2f);
+        }
     }
 } 

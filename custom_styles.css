@@ -1,0 +1,272 @@
+/* Estilos profesionales para documentación técnica */
+@page {
+    margin: 2.5cm;
+    size: A4;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    max-width: 210mm;
+    margin: 0 auto;
+    background: white;
+}
+
+/* Títulos principales */
+h1 {
+    color: #2c3e50;
+    border-bottom: 3px solid #3498db;
+    padding-bottom: 10px;
+    font-size: 2.2em;
+    margin-top: 30px;
+    margin-bottom: 20px;
+}
+
+h2 {
+    color: #34495e;
+    border-bottom: 2px solid #ecf0f1;
+    padding-bottom: 8px;
+    font-size: 1.8em;
+    margin-top: 25px;
+    margin-bottom: 15px;
+}
+
+h3 {
+    color: #2c3e50;
+    font-size: 1.4em;
+    margin-top: 20px;
+    margin-bottom: 12px;
+}
+
+h4 {
+    color: #34495e;
+    font-size: 1.2em;
+    margin-top: 15px;
+    margin-bottom: 10px;
+}
+
+/* Tabla de contenidos */
+nav#TOC {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+nav#TOC ul {
+    list-style-type: none;
+    padding-left: 20px;
+}
+
+nav#TOC > ul {
+    padding-left: 0;
+}
+
+nav#TOC a {
+    color: #007bff;
+    text-decoration: none;
+    display: block;
+    padding: 3px 0;
+}
+
+nav#TOC a:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+/* Párrafos */
+p {
+    margin-bottom: 12px;
+    text-align: justify;
+}
+
+/* Listas */
+ul, ol {
+    margin-bottom: 15px;
+    padding-left: 30px;
+}
+
+li {
+    margin-bottom: 5px;
+}
+
+/* Código */
+code {
+    background: #f1f3f4;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.9em;
+    color: #d63384;
+}
+
+pre {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 5px;
+    padding: 15px;
+    overflow-x: auto;
+    margin: 15px 0;
+}
+
+pre code {
+    background: none;
+    padding: 0;
+    color: #212529;
+}
+
+/* Tablas */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 0.9em;
+}
+
+th, td {
+    border: 1px solid #dee2e6;
+    padding: 12px;
+    text-align: left;
+}
+
+th {
+    background: #e9ecef;
+    font-weight: bold;
+    color: #495057;
+}
+
+tr:nth-child(even) {
+    background: #f8f9fa;
+}
+
+/* Blockquotes */
+blockquote {
+    border-left: 4px solid #007bff;
+    background: #f8f9fa;
+    padding: 15px 20px;
+    margin: 20px 0;
+    font-style: italic;
+}
+
+/* Enlaces */
+a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+a:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+/* Badges y elementos especiales */
+.badge {
+    display: inline-block;
+    padding: 3px 8px;
+    background: #28a745;
+    color: white;
+    border-radius: 3px;
+    font-size: 0.8em;
+    margin-right: 5px;
+}
+
+/* Secciones especiales */
+.alert {
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+}
+
+.alert-info {
+    color: #0c5460;
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+}
+
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+/* Elementos técnicos */
+.tech-spec {
+    background: #f8f9fa;
+    border-left: 4px solid #28a745;
+    padding: 15px;
+    margin: 15px 0;
+}
+
+/* Separadores */
+hr {
+    border: none;
+    height: 2px;
+    background: linear-gradient(to right, #3498db, #e74c3c);
+    margin: 30px 0;
+}
+
+/* Responsivo para impresión */
+@media print {
+    body {
+        font-size: 11pt;
+        line-height: 1.4;
+    }
+    
+    h1 {
+        page-break-before: always;
+        font-size: 18pt;
+    }
+    
+    h1:first-of-type {
+        page-break-before: avoid;
+    }
+    
+    h2 {
+        font-size: 14pt;
+        page-break-after: avoid;
+    }
+    
+    h3 {
+        font-size: 12pt;
+        page-break-after: avoid;
+    }
+    
+    pre, code {
+        page-break-inside: avoid;
+    }
+    
+    table {
+        page-break-inside: avoid;
+    }
+    
+    a {
+        color: #000;
+        text-decoration: underline;
+    }
+    
+    nav#TOC {
+        page-break-after: always;
+    }
+}
+
+/* Mejoras visuales */
+.highlight {
+    background: #fff3cd;
+    padding: 2px 4px;
+    border-radius: 2px;
+}
+
+.emoji {
+    font-size: 1.2em;
+}
+
+.section-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 20px 0;
+} 

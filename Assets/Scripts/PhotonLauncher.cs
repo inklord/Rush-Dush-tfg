@@ -21,6 +21,14 @@ public class PhotonLauncher : MonoBehaviourPunCallbacks
     {
         Debug.Log("🚀 PhotonLauncher iniciado");
         
+        // Verificar si ya hay un jugador spawneado
+        if (MasterSpawnController.HasSpawnedPlayer())
+        {
+            Debug.Log("🚫 PhotonLauncher: Ya existe jugador, desactivando spawner");
+            enabled = false;
+            return;
+        }
+        
         // Conectar usando la configuración ya establecida
         if (PhotonNetwork.IsConnected && PhotonNetwork.InRoom)
         {
@@ -50,6 +58,13 @@ public class PhotonLauncher : MonoBehaviourPunCallbacks
     /// </summary>
     void SpawnPlayer()
     {
+        // Verificar con MasterSpawnController primero
+        if (!MasterSpawnController.RequestSpawn("PhotonLauncher"))
+        {
+            Debug.Log("🚫 PhotonLauncher: MasterSpawnController denegó el spawn");
+            return;
+        }
+        
         // ⭐ CRÍTICO: Solo spawnear UN jugador por cliente
         if (hasSpawned)
         {
@@ -83,7 +98,10 @@ public class PhotonLauncher : MonoBehaviourPunCallbacks
         if (player != null)
         {
             hasSpawned = true;
-            Debug.Log($"✅ MI jugador spawneado en: {spawnPosition} | PhotonView.IsMine: {player.GetComponent<PhotonView>().IsMine}");
+            Debug.Log($"✅ PhotonLauncher - MI jugador spawneado en: {spawnPosition} | PhotonView.IsMine: {player.GetComponent<PhotonView>().IsMine}");
+            
+            // Registrar con MasterSpawnController
+            MasterSpawnController.RegisterSpawnedPlayer(player, "PhotonLauncher");
             
             // Configurar cámara SOLO para MI jugador
             SetupCameraForPlayer(player);

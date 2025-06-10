@@ -311,31 +311,21 @@ public class NetworkPlayerController : MonoBehaviourPunCallbacks, IPunObservable
     
     void UpdateRemoteAnimations()
     {
-        if (playerAnimator == null) return;
+        if (!synchronizeAnimations || playerAnimator == null) return;
+
+        // Actualizar animaciones basadas en los datos de red
+        playerAnimator.SetBool("isMove", networkMoving);
+        playerAnimator.SetBool("isJump", networkJumping);
+        playerAnimator.SetBool("isGrounded", networkGrounded);
         
-        // Actualizar parámetros de animación basados en datos de red
-        try
+        // Verificar si existe el parámetro Speed antes de actualizarlo
+        foreach (AnimatorControllerParameter param in playerAnimator.parameters)
         {
-            playerAnimator.SetBool("isMove", networkMoving);
-            playerAnimator.SetBool("isJump", networkJumping);
-            playerAnimator.SetFloat("Speed", networkSpeed);
-            
-            // Opcional: sincronizar estado de grounded
-            if (playerAnimator.parameters.Length > 0)
+            if (param.name == "Speed" && param.type == AnimatorControllerParameterType.Float)
             {
-                foreach (var param in playerAnimator.parameters)
-                {
-                    if (param.name == "isGrounded" && param.type == AnimatorControllerParameterType.Bool)
-                    {
-                        playerAnimator.SetBool("isGrounded", networkGrounded);
-                        break;
-                    }
-                }
+                playerAnimator.SetFloat("Speed", networkSpeed);
+                break;
             }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning($"⚠️ Error actualizando animaciones remotas: {e.Message}");
         }
     }
     
@@ -367,18 +357,20 @@ public class NetworkPlayerController : MonoBehaviourPunCallbacks, IPunObservable
     {
         if (stream.IsWriting)
         {
-            // Enviando datos (jugador local)
-            WriteNetworkData(stream);
+            // Enviar datos
+            WriteNetworkData(stream, info);
         }
         else
         {
-            // Recibiendo datos (jugador remoto)
+            // Recibir datos
             ReadNetworkData(stream, info);
         }
     }
     
-    void WriteNetworkData(PhotonStream stream)
+    void WriteNetworkData(PhotonStream stream, PhotonMessageInfo info)
     {
+        if (!isInitialized || playerController == null) return;
+
         // Enviar posición
         if (synchronizePosition)
         {
@@ -397,41 +389,20 @@ public class NetworkPlayerController : MonoBehaviourPunCallbacks, IPunObservable
             stream.SendNext(playerRigidbody.velocity);
         }
         
-        // Enviar datos de animación
+        // Enviar estado de animación
         if (synchronizeAnimations)
         {
-            bool isMoving = false;
-            bool isJumping = false;
-            bool isGrounded = true;
-            float speed = 0f;
-            
-            if (playerRigidbody != null)
-            {
-                Vector3 horizontalVelocity = new Vector3(playerRigidbody.velocity.x, 0, playerRigidbody.velocity.z);
-                speed = horizontalVelocity.magnitude;
-                isMoving = speed > 0.1f;
-                isJumping = playerRigidbody.velocity.y > 0.1f;
-            }
-            
-            // Detectar si está en el suelo
-            if (Physics.Raycast(transform.position, Vector3.down, 1.5f))
-            {
-                isGrounded = true;
-            }
-            else
-            {
-                isGrounded = false;
-            }
-            
-            stream.SendNext(isMoving);
-            stream.SendNext(isJumping);
-            stream.SendNext(isGrounded);
-            stream.SendNext(speed);
+            stream.SendNext(playerController.IsMoving);
+            stream.SendNext(playerController.IsJumping);
+            stream.SendNext(playerController.IsGrounded);
+            stream.SendNext(playerController.CurrentSpeed);
         }
     }
     
     void ReadNetworkData(PhotonStream stream, PhotonMessageInfo info)
     {
+        if (!isInitialized) return;
+
         // Recibir posición
         if (synchronizePosition)
         {
@@ -450,7 +421,7 @@ public class NetworkPlayerController : MonoBehaviourPunCallbacks, IPunObservable
             networkVelocity = (Vector3)stream.ReceiveNext();
         }
         
-        // Recibir datos de animación
+        // Recibir estado de animación
         if (synchronizeAnimations)
         {
             networkMoving = (bool)stream.ReceiveNext();

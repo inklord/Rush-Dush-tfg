@@ -12,9 +12,6 @@ EditorBuildSettings:
     path: Assets/Scenes/Lobby.unity
     guid: 3d16901a223fbfa439e9a8c4ae70ee6f
   - enabled: 1
-    path: Assets/Scenes/WaitingUser.unity
-    guid: 3a732b3dec1a4764bbac9197fb3061f2
-  - enabled: 1
     path: Assets/Scenes/Intro.unity
     guid: afcbea7d83a17444f917efe855ef5095
   - enabled: 1

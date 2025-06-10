@@ -43,6 +43,14 @@ public class PhotonSpawnController : MonoBehaviourPunCallbacks
     {
         Debug.Log("🎯 PhotonSpawnController iniciado");
         
+        // Verificar si ya hay un jugador spawneado
+        if (MasterSpawnController.HasSpawnedPlayer())
+        {
+            Debug.Log("🚫 PhotonSpawnController: Ya existe jugador, desactivando spawner");
+            enabled = false;
+            return;
+        }
+        
         // Solo spawnear si estamos conectados y en sala
         if (PhotonNetwork.IsConnected && PhotonNetwork.InRoom)
         {
@@ -119,12 +127,19 @@ public class PhotonSpawnController : MonoBehaviourPunCallbacks
     /// </summary>
     void SpawnMyPlayer()
     {
+        // Verificar con MasterSpawnController primero
+        if (!MasterSpawnController.RequestSpawn("PhotonSpawnController"))
+        {
+            Debug.Log("🚫 PhotonSpawnController: MasterSpawnController denegó el spawn");
+            return;
+        }
+        
         lastSpawnAttempt = Time.time;
         
         // Obtener posición de spawn única
         Vector3 spawnPosition = GetUniqueSpawnPosition();
         
-        Debug.Log($"🎯 Spawneando jugador en: {spawnPosition}");
+        Debug.Log($"🎯 PhotonSpawnController spawneando jugador en: {spawnPosition}");
         
         try
         {
@@ -136,7 +151,10 @@ public class PhotonSpawnController : MonoBehaviourPunCallbacks
                 hasSpawnedPlayer = true;
                 myPlayer = player;
                 
-                Debug.Log($"✅ Jugador spawneado exitosamente: {player.name}");
+                Debug.Log($"✅ PhotonSpawnController - Jugador spawneado exitosamente: {player.name}");
+                
+                // Registrar con MasterSpawnController
+                MasterSpawnController.RegisterSpawnedPlayer(player, "PhotonSpawnController");
                 
                 // Configurar cámara
                 SetupCameraForPlayer(player);

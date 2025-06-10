@@ -10,7 +10,7 @@ public class LHS_Respawn2 : MonoBehaviour
     //[SerializeField] private Transform player;
     [SerializeField] Transform respawnPoint;
 
-    //¶³¾îÁ³À»¶§ ±¸ÇöÀ» À§ÇÑ
+    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     Animator anim;
 
     private RaycastHit hit;
@@ -34,12 +34,12 @@ public class LHS_Respawn2 : MonoBehaviour
         }
         */
         
-        // ÇÃ·¹ÀÌ¾î¸¦ ±âÁØÀ¸·Î ·¹ÀÌ¸¦ ½ú´Âµ¥
-        // RespawnTrigger¶û °Å¸®°¡ Distance Â÷ÀÌ¶ó¸é
-        // DownPlayer¸¦ ½ÇÇà ½ÃÅ°°í ½Í´Ù
-        // DownPlayer ¾Ö´Ï¸ÞÀÌ¼Çµµ ½ÇÇà½ÃÅ°°í ½Í´Ù.
+        // ï¿½Ã·ï¿½ï¿½Ì¾î¸¦ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ì¸ï¿½ ï¿½ï¿½ï¿½Âµï¿½
+        // RespawnTriggerï¿½ï¿½ ï¿½Å¸ï¿½ï¿½ï¿½ Distance ï¿½ï¿½ï¿½Ì¶ï¿½ï¿½
+        // DownPlayerï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Å°ï¿½ï¿½ ï¿½Í´ï¿½
+        // DownPlayer ï¿½Ö´Ï¸ï¿½ï¿½Ì¼Çµï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Å°ï¿½ï¿½ ï¿½Í´ï¿½.
 
-        if (Physics.Raycast(player.transform.position, -player.transform.up, out hit, distance, layerMask))
+        if (player != null && Physics.Raycast(player.transform.position, -player.transform.up, out hit, distance, layerMask))
         {
             //RespSound();
             DownPlayer();
@@ -54,8 +54,8 @@ public class LHS_Respawn2 : MonoBehaviour
         //resp.Play();
     }
 
-    // RaspawnTrigger¿¡ Ãæµ¹ÇßÀ»¶§ ¸®½ºÆù ÁöÁ¡À¸·Î µ¹¾Æ°¡°í ½Í´Ù
-    // ¾Ö´Ï¸ÞÀÌ¼Çµµ ²ô°í ½Í´Ù.
+    // RaspawnTriggerï¿½ï¿½ ï¿½æµ¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Æ°ï¿½ï¿½ï¿½ ï¿½Í´ï¿½
+    // ï¿½Ö´Ï¸ï¿½ï¿½Ì¼Çµï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Í´ï¿½.
     private void OnTriggerEnter(Collider other)
     {
         if(other.CompareTag("Player"))
@@ -66,7 +66,7 @@ public class LHS_Respawn2 : MonoBehaviour
 
             player.transform.position = respawnPoint.transform.position;
             //player.transform.GetChild(0).transform.position = new Vector3(0, 0.09f, 0);
-            // º¯È¯º¯°æ»çÇ×À» ¹°¸®¿£Áø¿¡ Àû¿ë
+            // ï¿½ï¿½È¯ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
             //Physics.SyncTransforms();
             
         }

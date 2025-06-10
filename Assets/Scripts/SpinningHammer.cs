@@ -13,12 +13,12 @@ public class SpinningHammer : MonoBehaviour
     public bool randomStartRotation = true; // Rotación inicial aleatoria
     
     [Header("💥 Impact Settings")]
-    public float baseKnockbackForce = 35f; // Fuerza base de empuje (incrementada)
-    public float maxKnockbackForce = 70f; // Fuerza máxima de empuje (incrementada)
-    public float forceMultiplierBySpeed = 2f; // Multiplicador basado en velocidad (incrementado)
-    public float stunDuration = 1.2f; // Duración del aturdimiento (incrementada)
-    public float minVerticalForce = 15f; // Fuerza vertical mínima (incrementada significativamente)
-    public float verticalForceMultiplier = 0.8f; // Multiplicador para fuerza vertical
+    public float baseKnockbackForce = 15f; // Fuerza base de empuje (reducida)
+    public float maxKnockbackForce = 30f; // Fuerza máxima de empuje (reducida)
+    public float forceMultiplierBySpeed = 1.2f; // Multiplicador basado en velocidad (reducido)
+    public float stunDuration = 0.8f; // Duración del aturdimiento (reducida)
+    public float minVerticalForce = 8f; // Fuerza vertical mínima (reducida)
+    public float verticalForceMultiplier = 0.5f; // Multiplicador para fuerza vertical (reducido)
     
     [Header("📊 Physics Settings")]
     public bool useVariableForce = true; // Fuerza variable según velocidad

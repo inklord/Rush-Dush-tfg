@@ -207,6 +207,12 @@ public class SimplePlayerMovement : MonoBehaviourPun, IPunObservable
     /// </summary>
     void SetupCamera()
     {
+        if (!photonView.IsMine)
+        {
+            Debug.Log("❌ No configurar cámara para jugador remoto");
+            return;
+        }
+
         if (currentCamera != null)
         {
             MovimientoCamaraSimple cameraScript = currentCamera.GetComponent<MovimientoCamaraSimple>();
@@ -214,7 +220,20 @@ public class SimplePlayerMovement : MonoBehaviourPun, IPunObservable
             {
                 cameraScript = currentCamera.gameObject.AddComponent<MovimientoCamaraSimple>();
             }
+
+            // Verificar si la cámara ya está siguiendo a otro jugador
+            if (cameraScript.player != null && cameraScript.player != transform)
+            {
+                Debug.LogWarning("⚠️ La cámara ya está siguiendo a otro jugador");
+                return;
+            }
+
             cameraScript.SetPlayer(transform);
+            Debug.Log($"✅ Cámara asignada al jugador: {gameObject.name}");
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ No se encontró la cámara principal");
         }
     }
     

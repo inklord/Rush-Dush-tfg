@@ -10,12 +10,12 @@ public class EarlyResolutionFix : MonoBehaviour
     [Header("🖥️ Configuración Forzada")]
     public Vector2Int targetResolution = new Vector2Int(1920, 1080);
     public bool forceFullscreen = false;
-    public bool enableDebugLogs = true;
+    public bool enableDebugLogs = false;
     
     [Header("⚡ Configuración Agresiva")]
     public bool applyInAwake = true;
-    public bool applyInStart = true;
-    public bool applyInFirstUpdate = true;
+    public bool applyInStart = false;
+    public bool applyInFirstUpdate = false;
     public bool applyEveryFrame = false;
     
     private bool hasAppliedOnce = false;
@@ -55,12 +55,6 @@ public class EarlyResolutionFix : MonoBehaviour
     /// </summary>
     void ForceResolutionNow(string context)
     {
-        if (enableDebugLogs)
-        {
-            Debug.Log($"🔧 [{context}] Resolución ANTES: {Screen.width}x{Screen.height}");
-        }
-        
-        // Aplicar resolución target
         Screen.SetResolution(targetResolution.x, targetResolution.y, forceFullscreen);
         
         if (enableDebugLogs)
