@@ -36,7 +36,7 @@ public class BasicPlayerMovement : MonoBehaviour
         
         // Configurar cámara para seguir a este jugador
         SetupCamera();
-        Debug.Log("✅ BasicPlayerMovement iniciado - Controles activados");
+        
     }
     
     void Update()
@@ -150,7 +150,7 @@ public class BasicPlayerMovement : MonoBehaviour
                 cameraScript.ShakeCamera(0.3f, 1f);
             }
             
-            Debug.Log("🚀 ¡Salto!");
+            
         }
     }
     
@@ -180,7 +180,7 @@ public class BasicPlayerMovement : MonoBehaviour
                 cameraScript = currentCamera.gameObject.AddComponent<MovimientoCamaraSimple>();
             }
             cameraScript.SetPlayer(transform);
-            Debug.Log("📷 Cámara configurada automáticamente");
+            
         }
     }
     

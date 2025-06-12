@@ -1,109 +1,140 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
+using System.Collections;
 
 /// <summary>
-/// 📹 Sistema de Cámara Simple y Suave - Solo Tercera Persona
-/// Versión simplificada sin vibraciones, solo movimiento suave
+/// 📷 Cámara simple estilo Fall Guys
+/// La cámara sigue automáticamente al jugador
+/// El JUGADOR controla su rotación con el ratón (no la cámara)
 /// </summary>
 public class MovimientoCamaraSimple : MonoBehaviour
 {
     [Header("🎯 Target & Referencias")]
-    public Transform player; // Referencia al jugador
+    public Transform player;
     
     [Header("📐 Posicionamiento")]
-    public Vector3 offset = new Vector3(0, 5, -8); // Posición relativa al jugador
-    public float smoothSpeed = 5f; // Velocidad de suavizado (más bajo = más suave)
-    public float lookAtHeight = 1.5f; // Altura a la que mira la cámara
+    public float distance = 8f; // Distancia de la cámara al jugador
+    public float height = 5f; // Altura de la cámara sobre el jugador
+    public float smoothSpeed = 8f; // Velocidad de seguimiento
+    public float lookAtHeight = 1.5f; // Altura a la que mira la cámara en el jugador
     
-    [Header("🖱️ Control de Mouse")]
-    public float mouseSensitivity = 100f; // Sensibilidad del mouse
-    public float minYRotation = -30f; // Límite inferior
-    public float maxYRotation = 60f; // Límite superior
+    [Header("🎯 Seguimiento Automático")]
+    public float autoFollowSpeed = 6f; // Velocidad con que sigue la dirección del jugador
+    public float followOffset = 180f; // Offset angular detrás del jugador (180° = detrás)
+    
+    [Header("🔒 Límites de Distancia")]
+    public float minDistance = 3f;
+    public float maxDistance = 15f;
+    public float zoomSpeed = 2f;
     
     [Header("💥 Camera Shake")]
     public bool enableShake = true;
     public float shakeIntensity = 1f;
     
+    [Header("🔧 Debug")]
+    public bool showDebugInfo = false;
+    
     // Variables privadas
-    private float mouseX = 0f;
-    private float mouseY = 0f;
+    private float currentYaw = 0f; // Rotación actual de la cámara
     private Vector3 currentVelocity;
     private bool isFollowingLocalPlayer = false;
     
-    // Sistema de shake simplificado
+    // Sistema de shake
     private Vector3 shakeOffset = Vector3.zero;
     private float shakeTimer = 0f;
     private float shakeDuration = 0f;
     
     void Start()
     {
-        // El cursor ahora es manejado por CursorManager
-        // No configurar cursor aquí
-        
-        // Buscar jugador si no está asignado
+        // Buscar jugador local si no está asignado
         if (player == null)
         {
             StartCoroutine(FindLocalPlayer());
         }
-        
-        Debug.Log("📹 Cámara simple inicializada");
+        else
+        {
+            InitializeCamera();
+        }
     }
     
     IEnumerator FindLocalPlayer()
     {
-        yield return new WaitForSeconds(0.5f); // Esperar a que se spawnen los jugadores
+        if (showDebugInfo) Debug.Log("🔍 Buscando jugador local...");
         
-        while (player == null && !isFollowingLocalPlayer)
+        // Intentar varias veces
+        for (int i = 0; i < 20; i++)
         {
-            GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
-            foreach (GameObject playerObj in players)
+            // Buscar primero en modo singleplayer
+            BasicPlayerMovement basicPlayer = FindObjectOfType<BasicPlayerMovement>();
+            if (basicPlayer != null)
+            {
+                SetPlayer(basicPlayer.transform);
+                if (showDebugInfo) Debug.Log("✅ Jugador singleplayer encontrado");
+                break;
+            }
+            
+            // Buscar en modo multiplayer
+            LHS_MainPlayer[] allPlayers = FindObjectsOfType<LHS_MainPlayer>();
+            foreach (LHS_MainPlayer playerObj in allPlayers)
             {
                 PhotonView pv = playerObj.GetComponent<PhotonView>();
                 if (pv != null && pv.IsMine)
                 {
                     SetPlayer(playerObj.transform);
-                    isFollowingLocalPlayer = true;
-                    Debug.Log("✅ Jugador local encontrado y asignado a la cámara");
+                    if (showDebugInfo) Debug.Log("✅ Jugador local multiplayer encontrado");
                     break;
                 }
             }
+            
+            if (player != null) break;
             yield return new WaitForSeconds(0.5f);
+        }
+        
+        if (player == null)
+        {
+            if (showDebugInfo) Debug.LogWarning("⚠️ No se pudo encontrar jugador local");
         }
     }
     
     void Update()
     {
-        // Solo actualizar shake
+        if (player == null) return;
+        
+        // Zoom con scroll
+        float scroll = Input.GetAxis("Mouse ScrollWheel");
+        if (Mathf.Abs(scroll) > 0.01f)
+        {
+            distance = Mathf.Clamp(distance - scroll * zoomSpeed, minDistance, maxDistance);
+        }
+        
+        // Reset con R
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            ResetCamera();
+        }
+        
+        UpdateCameraPosition();
         UpdateShake();
     }
     
-    void LateUpdate()
+    void UpdateCameraPosition()
     {
-        if (player == null) return;
+        // Método más simple: calcular directamente la posición detrás del jugador
+        Vector3 playerForward = player.transform.forward;
+        Vector3 playerPosition = player.position;
         
-        // Solo procesar input de mouse si el cursor está bloqueado (en juego)
-        bool canControlCamera = CursorManager.Instance == null || CursorManager.Instance.cursorLocked;
+        // Posición detrás del jugador: ir hacia atrás desde el jugador
+        Vector3 targetPosition = playerPosition - (playerForward * distance) + (Vector3.up * height);
         
-        if (canControlCamera)
-        {
-            // Input del mouse
-            mouseX += Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
-            mouseY -= Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
-            mouseY = Mathf.Clamp(mouseY, minYRotation, maxYRotation);
-        }
-        
-        // Calcular posición objetivo
-        Quaternion rotation = Quaternion.Euler(mouseY, mouseX, 0);
-        Vector3 targetPosition = player.position - (rotation * Vector3.forward * offset.magnitude) + Vector3.up * offset.y;
-        
-        // Aplicar suavizado con SmoothDamp (más suave que Lerp)
+        // Suavizar movimiento de la cámara
         transform.position = Vector3.SmoothDamp(transform.position, targetPosition + shakeOffset, ref currentVelocity, 1f / smoothSpeed);
         
-        // Mirar al jugador
-        Vector3 lookTarget = player.position + Vector3.up * lookAtHeight;
+        // Mirar hacia el jugador
+        Vector3 lookTarget = playerPosition + Vector3.up * lookAtHeight;
         transform.LookAt(lookTarget);
+        
+        // Actualizar currentYaw para el debug (opcional)
+        currentYaw = transform.eulerAngles.y;
     }
     
     void UpdateShake()
@@ -112,7 +143,6 @@ public class MovimientoCamaraSimple : MonoBehaviour
         {
             shakeTimer -= Time.deltaTime;
             
-            // Shake simple y suave
             float shakeAmount = shakeIntensity * (shakeTimer / shakeDuration);
             shakeOffset = Random.insideUnitSphere * shakeAmount;
             
@@ -120,6 +150,59 @@ public class MovimientoCamaraSimple : MonoBehaviour
             {
                 shakeOffset = Vector3.zero;
             }
+        }
+    }
+    
+    /// <summary>
+    /// 🎯 Asignar jugador a seguir
+    /// </summary>
+    public void SetPlayer(Transform newPlayer)
+    {
+        if (isFollowingLocalPlayer && player != null)
+        {
+            Debug.LogWarning("⚠️ La cámara ya está siguiendo a un jugador");
+            return;
+        }
+        
+        // Verificar si es el jugador local (permitir singleplayer)
+        PhotonView pv = newPlayer.GetComponent<PhotonView>();
+        if (pv == null || pv.IsMine)
+        {
+            player = newPlayer;
+            isFollowingLocalPlayer = true;
+            InitializeCamera();
+            if (showDebugInfo) Debug.Log($"📹 Cámara Fall Guys asignada a: {newPlayer.name}");
+        }
+        else
+        {
+            if (showDebugInfo) Debug.LogWarning("❌ No se puede asignar un jugador remoto");
+        }
+    }
+    
+    /// <summary>
+    /// 🔧 Inicializar cámara cuando se asigna un jugador
+    /// </summary>
+    void InitializeCamera()
+    {
+        if (player != null)
+        {
+            // Inicializar ángulos basados en la rotación del jugador
+            currentYaw = player.eulerAngles.y;
+        }
+    }
+    
+    /// <summary>
+    /// 🔄 Resetear cámara
+    /// </summary>
+    public void ResetCamera()
+    {
+        if (player != null)
+        {
+            currentYaw = player.eulerAngles.y;
+            distance = 8f;
+            shakeOffset = Vector3.zero;
+            shakeTimer = 0f;
+            if (showDebugInfo) Debug.Log("🔄 Cámara Fall Guys reseteada");
         }
     }
     
@@ -135,52 +218,31 @@ public class MovimientoCamaraSimple : MonoBehaviour
         shakeIntensity = intensity;
     }
     
-    /// <summary>
-    /// 🎯 Asignar nuevo objetivo
-    /// </summary>
-    public void SetPlayer(Transform newPlayer)
+    void OnGUI()
     {
-        if (isFollowingLocalPlayer && player != null)
-        {
-            Debug.LogWarning("⚠️ La cámara ya está siguiendo al jugador local");
-            return;
-        }
-
-        PhotonView pv = newPlayer.GetComponent<PhotonView>();
-        if (pv != null && pv.IsMine)
-        {
-            player = newPlayer;
-            isFollowingLocalPlayer = true;
-            Debug.Log($"📹 Nuevo jugador asignado: {newPlayer.name}");
-        }
-        else
-        {
-            Debug.LogWarning("❌ No se puede asignar un jugador remoto a la cámara");
-        }
-    }
-    
-    /// <summary>
-    /// 🔄 Reset de cámara
-    /// </summary>
-    public void ResetCamera()
-    {
-        mouseX = 0f;
-        mouseY = 0f;
-        shakeOffset = Vector3.zero;
-        shakeTimer = 0f;
-    }
-    
-    void OnDrawGizmosSelected()
-    {
+        if (!showDebugInfo || !Application.isPlaying) return;
+        
+        GUILayout.BeginArea(new Rect(10, 150, 300, 200));
+        GUILayout.Label("=== CÁMARA FALL GUYS ===");
+        GUILayout.Label($"Jugador: {(player ? player.name : "NINGUNO")}");
+        GUILayout.Label($"Cámara Yaw: {currentYaw:F1}°");
+        GUILayout.Label($"Jugador Yaw: {(player ? player.eulerAngles.y.ToString("F1") : "N/A")}°");
+        GUILayout.Label($"Distancia: {distance:F1}m");
+        GUILayout.Label($"Siguiendo: {(isFollowingLocalPlayer ? "SÍ" : "NO")}");
+        GUILayout.Label("Scroll = Zoom | R = Reset");
+        
         if (player != null)
         {
-            // Mostrar conexión visual
-            Gizmos.color = Color.yellow;
-            Gizmos.DrawLine(transform.position, player.position);
-            
-            // Mostrar punto de mira
-            Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(player.position + Vector3.up * lookAtHeight, 0.2f);
+            LHS_MainPlayer playerScript = player.GetComponent<LHS_MainPlayer>();
+            if (playerScript != null)
+            {
+                GUILayout.Label("--- JUGADOR ---");
+                GUILayout.Label($"Velocidad: {playerScript.CurrentSpeed:F1}");
+                GUILayout.Label($"En suelo: {(playerScript.IsGrounded ? "SÍ" : "NO")}");
+                GUILayout.Label($"Saltando: {(playerScript.IsJumping ? "SÍ" : "NO")}");
+            }
         }
+        
+        GUILayout.EndArea();
     }
 } 

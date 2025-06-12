@@ -84,7 +84,7 @@ public class AIPlayerController : MonoBehaviour
         FindWaypoints();
         FindGoalObjects();
         
-        Debug.Log($"🤖 AI Controller iniciado para {gameObject.name}");
+        
     }
     
     void FindWaypoints()
@@ -102,7 +102,7 @@ public class AIPlayerController : MonoBehaviour
             
             // Encontrar waypoint más cercano como inicio
             currentWaypointIndex = GetClosestWaypointIndex();
-            Debug.Log($"🎯 IA encontró {waypoints.Length} waypoints");
+            
         }
     }
     
@@ -118,7 +118,7 @@ public class AIPlayerController : MonoBehaviour
         
         if (goalObjects.Length > 0)
         {
-            Debug.Log($"🏁 IA encontró {goalObjects.Length} objetivos");
+            
         }
     }
     
@@ -310,7 +310,7 @@ public class AIPlayerController : MonoBehaviour
             rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
             lastJumpTime = Time.time;
             
-            Debug.Log($"🤖 {gameObject.name} saltó");
+            
         }
     }
     
@@ -342,7 +342,7 @@ public class AIPlayerController : MonoBehaviour
                     PerformJump();
                 }
                 
-                Debug.Log($"🤖 {gameObject.name} se desatascó");
+                
             }
         }
         else

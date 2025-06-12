@@ -17,12 +17,12 @@ public class CameraAutoSetup : MonoBehaviour
     
     void Start()
     {
-        Debug.Log("📷 CameraAutoSetup iniciado");
+        
         
         cameraScript = FindObjectOfType<MovimientoCamaraSimple>();
         if (cameraScript == null)
         {
-            Debug.LogError("📷 No se encontró MovimientoCamaraSimple en la escena");
+            
             return;
         }
         
@@ -51,19 +51,19 @@ public class CameraAutoSetup : MonoBehaviour
         GameObject miJugador = EncontrarMiJugador();
         if (miJugador == null)
         {
-            Debug.LogWarning("📷 No se encontró mi jugador para configurar cámara");
+            
             return;
         }
         
         cameraScript.SetPlayer(miJugador.transform);
-        Debug.Log($"📷 ✅ Cámara configurada para seguir: {miJugador.name}");
+        
         
         // Asegurar que la cámara esté activa
         Camera mainCamera = Camera.main;
         if (mainCamera != null && !mainCamera.enabled)
         {
             mainCamera.enabled = true;
-            Debug.Log("📷 ✅ Cámara principal activada");
+            
         }
     }
     
@@ -80,7 +80,7 @@ public class CameraAutoSetup : MonoBehaviour
         // Si la cámara no tiene player o sigue al jugador incorrecto
         if (cameraScript.player == null || cameraScript.player.gameObject != miJugador)
         {
-            Debug.Log("📷 Reconfigurar cámara - jugador incorrecto o faltante");
+            
             cameraScript.SetPlayer(miJugador.transform);
         }
     }

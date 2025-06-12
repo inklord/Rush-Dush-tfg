@@ -2717,6 +2717,8 @@ MonoBehaviour:
   rotateSpeed: 5
   jumpPower: 6
   UseCameraRotation: 1
+  mouseSensitivity: 3
+  invertMouseY: 0
   groundCheckDistance: 2
   groundLayerMask:
     serializedVersion: 2
@@ -2725,6 +2727,8 @@ MonoBehaviour:
   jumpCooldown: 0.1
   coyoteTime: 0.1
   respawnHeight: -10
+  enableDoubleJump: 1
+  secondJumpMultiplier: 0.8
   cameraDistance: 5
   cameraHeight: 2
   cameraSmoothSpeed: 5

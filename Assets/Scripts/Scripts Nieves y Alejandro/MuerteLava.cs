@@ -1,21 +1,28 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using System.Collections;
 using Photon.Pun;
 
-public class MuerteLava : MonoBehaviourPunCallbacks
+public class MuerteLava : MonoBehaviour
 {
+    [Header("UI Elements")]
     public GameObject deathImage;
     public AudioSource deathSound;
     public AudioSource backgroundMusic;
     public float fadeDuration = 1.5f;
-    public float deathScreenDuration = 5f;
+    public float deathScreenDuration = 2f;
     
-    [Header("Configuración de Eliminación")]
+    [Header("Debug")]
     public bool enableDebugLogs = true;
+
+    private bool transitionStarted = false;
+    private PhotonView photonView;
 
     private void Start()
     {
+        photonView = GetComponent<PhotonView>();
+        
         if (deathImage != null)
         {
             deathImage.SetActive(false);
@@ -27,299 +34,137 @@ public class MuerteLava : MonoBehaviourPunCallbacks
         }
     }
 
-    private void OnCollisionEnter(Collision collision)
+    private void OnTriggerEnter(Collider other)
     {
-        GameObject objeto = collision.gameObject;
-        
-        if (enableDebugLogs)
-            Debug.Log($"MuerteLava: Colisión detectada con {objeto.name}, Tag: {objeto.tag}");
-
-        // ✅ INTEGRACIÓN CON LAVA GAME MANAGER (SOLO PARA PLAYERS)
-        if (objeto.CompareTag("Player") && LavaGameManager.Instance != null)
+        // Si es un jugador, destruirlo y cambiar a escena de fracaso
+        if (other.CompareTag("Player"))
         {
-            // Notificar al LavaGameManager SOLO cuando es un Player
-            LavaGameManager.Instance.HandleLavaDeath(objeto);
-            
-            if (enableDebugLogs)
-                Debug.Log($"MuerteLava: Notificando a LavaGameManager sobre muerte de PLAYER {objeto.name}");
-        }
-
-        // ✅ DETECCIÓN MEJORADA PARA JUGADORES REALES
-        if (objeto.CompareTag("Player"))
-        {
-            PhotonView photonView = objeto.GetComponent<PhotonView>();
-            
-            if (enableDebugLogs)
+            // Destruir el jugador
+            if (PhotonNetwork.IsConnected)
             {
-                Debug.Log($"MuerteLava: Jugador detectado - {objeto.name}");
-                Debug.Log($"MuerteLava: Tiene PhotonView: {photonView != null}");
-                if (photonView != null)
+                PhotonView playerView = other.GetComponent<PhotonView>();
+                if (playerView != null && playerView.IsMine)
                 {
-                    Debug.Log($"MuerteLava: PhotonView.IsMine: {photonView.IsMine}");
-                    Debug.Log($"MuerteLava: PhotonView.ViewID: {photonView.ViewID}");
+                    PhotonNetwork.Destroy(other.gameObject);
+                    // Ir a escena de fracaso
+                    SceneChange sceneChanger = FindObjectOfType<SceneChange>();
+                    if (sceneChanger != null)
+                    {
+                        sceneChanger.GoToEndingFailure();
+                    }
                 }
-            }
-            
-            // ✅ ELIMINACIÓN MÁS PERMISIVA para Players
-            if (photonView != null && photonView.IsMine)
-            {
-                // Método original con PhotonView
-                MostrarMuerteJugador(objeto);
-            }
-            else if (photonView == null)
-            {
-                // Player sin PhotonView (modo local/testing)
-                if (enableDebugLogs)
-                    Debug.Log($"MuerteLava: Player sin PhotonView, eliminando localmente");
-                
-                MostrarMuerteJugadorLocal(objeto);
             }
             else
             {
-                if (enableDebugLogs)
-                    Debug.Log($"MuerteLava: Player no es mío (IsMine=false), ignorando");
-            }
-        }
-        
-        // ✅ SOPORTE PARA IAs (Solo GameManager original, NO LavaGameManager)
-        else if (objeto.CompareTag("IA"))
-        {
-            if (enableDebugLogs)
-                Debug.Log($"MuerteLava: IA {objeto.name} tocó lava - usando GameManager original");
-            
-            MostrarMuerteIA(objeto);
-        }
-        
-        // ✅ DETECCIÓN ALTERNATIVA por componentes
-        else if (objeto.GetComponent<IAPlayerSimple>() != null)
-        {
-            if (enableDebugLogs)
-                Debug.Log($"MuerteLava: IA detectada por componente IAPlayerSimple");
-            MostrarMuerteIA(objeto);
-        }
-        
-        // ✅ DETECCIÓN GENÉRICA como último recurso
-        else
-        {
-            // Buscar otros componentes que indiquen que es un jugador
-            bool isPlayer = false;
-            string componentFound = "";
-            
-            if (objeto.GetComponent<CharacterController>() != null)
-            {
-                isPlayer = true;
-                componentFound = "CharacterController";
-            }
-            else if (objeto.GetComponent<Rigidbody>() != null && objeto.name.ToLower().Contains("player"))
-            {
-                isPlayer = true;
-                componentFound = "Rigidbody + nombre contiene 'player'";
-            }
-            
-            if (isPlayer)
-            {
-                if (enableDebugLogs)
-                    Debug.Log($"MuerteLava: Jugador detectado por {componentFound}, eliminando como jugador local");
-                
-                // Solo notificar al LavaGameManager si es realmente un Player
-                if (objeto.CompareTag("Player") && LavaGameManager.Instance != null)
+                Destroy(other.gameObject);
+                // Ir a escena de fracaso
+                SceneChange sceneChanger = FindObjectOfType<SceneChange>();
+                if (sceneChanger != null)
                 {
-                    LavaGameManager.Instance.HandleLavaDeath(objeto);
+                    sceneChanger.GoToEndingFailure();
                 }
-                
-                MostrarMuerteJugadorLocal(objeto);
             }
-            else if (enableDebugLogs)
+        }
+        // Si es una IA, solo destruirla
+        else if (other.CompareTag("IA"))
+        {
+            if (PhotonNetwork.IsConnected)
             {
-                Debug.Log($"MuerteLava: Objeto {objeto.name} no reconocido como jugador o IA");
+                PhotonNetwork.Destroy(other.gameObject);
+            }
+            else
+            {
+                Destroy(other.gameObject);
             }
         }
     }
-    
-    private void MostrarMuerteJugadorLocal(GameObject jugador)
-    {
-        if (enableDebugLogs)
-            Debug.Log($"MuerteLava: Jugador local {jugador.name} eliminado por lava");
-        
-        // Efectos visuales y sonoros
-        MostrarEfectosMuerte();
-        
-        // ✅ INTEGRACIÓN CON GAMEMANAGER para jugadores locales
-        if (GameManager.Instance != null)
-        {
-            // Usar GameManager para jugadores locales también
-            GameManager.Instance.ForceEliminatePlayer(jugador);
-        }
-        else
-        {
-            // Fallback: destruir directamente
-            StartCoroutine(EliminatePlayerWithEffect(jugador));
-        }
 
-        // Configurar cámara después de muerte
-        ConfigurarCamaraDespuesMuerte();
-    }
-    
-    private IEnumerator EliminatePlayerWithEffect(GameObject player)
+    private IEnumerator ShowDeathEffects()
     {
-        // Cambiar color antes de destruir
-        Renderer playerRenderer = player.GetComponent<Renderer>();
-        if (playerRenderer != null)
-        {
-            playerRenderer.material.color = Color.red; // Color de muerte por lava
-        }
-        
-        // Esperar un poco antes de destruir
-        yield return new WaitForSeconds(1f);
-        
-        // Destruir el jugador
-        Destroy(player);
-    }
-
-    private void MostrarMuerteJugador(GameObject jugador)
-    {
-        if (enableDebugLogs)
-            Debug.Log($"MuerteLava: Jugador real {jugador.name} eliminado por lava");
-        
-        // Efectos visuales y sonoros para jugador real
-        MostrarEfectosMuerte();
-
-        // Destruir usando Photon para jugadores reales
-        if (jugador.GetComponent<PhotonView>().IsMine)
-        {
-            PhotonNetwork.Destroy(jugador);
-        }
-
-        // Configurar cámara después de muerte (solo para jugador local)
-        ConfigurarCamaraDespuesMuerte();
-    }
-    
-    private void MostrarMuerteIA(GameObject ia)
-    {
-        if (enableDebugLogs)
-            Debug.Log($"MuerteLava: IA {ia.name} eliminada por lava");
-        
-        // ✅ INTEGRACIÓN CON GAMEMANAGER
-        if (GameManager.Instance != null)
-        {
-            // Usar el sistema de GameManager para eliminar la IA
-            GameManager.Instance.ForceEliminatePlayer(ia);
-        }
-        else
-        {
-            // Fallback: eliminar directamente si no hay GameManager
-            if (enableDebugLogs)
-                Debug.LogWarning("MuerteLava: No se encontró GameManager, eliminando IA directamente");
-            
-            StartCoroutine(EliminateIAWithEffect(ia));
-        }
-        
-        // Efectos de sonido (sin efectos visuales para IAs)
-        ReproducirEfectoSonoro();
-    }
-    
-    private IEnumerator EliminateIAWithEffect(GameObject ia)
-    {
-        // Cambiar color antes de destruir
-        Renderer iaRenderer = ia.GetComponent<Renderer>();
-        if (iaRenderer != null)
-        {
-            iaRenderer.material.color = Color.red; // Color de muerte por lava
-        }
-        
-        // Esperar un poco antes de destruir
-        yield return new WaitForSeconds(0.5f);
-        
-        // Destruir la IA
-        Destroy(ia);
-    }
-
-    private void MostrarEfectosMuerte()
-    {
-        if (deathImage != null)
-        {
-            deathImage.SetActive(true);
-            StartCoroutine(FadeIn());
-        }
-
-        if (backgroundMusic != null)
-        {
-            backgroundMusic.Stop();
-        }
-
-        ReproducirEfectoSonoro();
-        
-        StartCoroutine(OcultarDeathImage());
-    }
-    
-    private void ReproducirEfectoSonoro()
-    {
+        // Reproducir sonido de muerte
         if (deathSound != null && !deathSound.isPlaying)
         {
             deathSound.Play();
         }
-    }
-    
-    private void ConfigurarCamaraDespuesMuerte()
-    {
-        // Set the camera position and rotation after death
-        if (Camera.main != null)
-        {
-            Camera.main.transform.position = new Vector3(-53, 130, -73); // Update position
-            Camera.main.transform.rotation = Quaternion.Euler(25, 30, 0);  // Update rotation
-        }
-    }
 
-    IEnumerator FadeIn()
-    {
-        Image img = deathImage.GetComponent<Image>();
-        Color color = img.color;
-        float elapsedTime = 0;
-
-        while (elapsedTime < fadeDuration)
+        // Detener música de fondo
+        if (backgroundMusic != null)
         {
-            color.a = Mathf.Lerp(0, 1, elapsedTime / fadeDuration);
-            img.color = color;
-            elapsedTime += Time.deltaTime;
-            yield return null;
+            StartCoroutine(FadeOutMusic());
         }
 
-        color.a = 1;
-        img.color = color;
-    }
-
-    IEnumerator OcultarDeathImage()
-    {
-        yield return new WaitForSeconds(deathScreenDuration);
-
+        // Mostrar y animar imagen de muerte
         if (deathImage != null)
         {
-            StartCoroutine(FadeOut());
+            Image img = deathImage.GetComponent<Image>();
+            if (img != null)
+            {
+                deathImage.SetActive(true);
+                
+                // Fade in
+                float elapsedTime = 0f;
+                Color startColor = img.color;
+                while (elapsedTime < fadeDuration)
+                {
+                    elapsedTime += Time.deltaTime;
+                    float alpha = Mathf.Lerp(0f, 1f, elapsedTime / fadeDuration);
+                    img.color = new Color(startColor.r, startColor.g, startColor.b, alpha);
+                    yield return null;
+                }
+            }
         }
     }
 
-    IEnumerator FadeOut()
+    private IEnumerator FadeOutMusic()
     {
-        if (deathImage == null) yield break;
-        Image img = deathImage.GetComponent<Image>();
-        if (img == null) yield break;
+        if (backgroundMusic == null) yield break;
 
-        Color color = img.color;
-        float elapsedTime = 0;
+        float startVolume = backgroundMusic.volume;
+        float elapsedTime = 0f;
 
         while (elapsedTime < fadeDuration)
         {
-            color.a = Mathf.Lerp(1, 0, elapsedTime / fadeDuration);
-            img.color = color;
             elapsedTime += Time.deltaTime;
+            backgroundMusic.volume = Mathf.Lerp(startVolume, 0f, elapsedTime / fadeDuration);
             yield return null;
         }
 
-        color.a = 0;
-        img.color = color;
-        deathImage.SetActive(false);
+        backgroundMusic.Stop();
     }
-    
+
+    private IEnumerator TransitionToFinalFracaso()
+    {
+        Debug.Log("MuerteLava: Iniciando transición a FinalFracaso");
+        
+        // Esperar a que se muestren los efectos de muerte
+        yield return new WaitForSeconds(deathScreenDuration);
+
+        Debug.Log("MuerteLava: Tiempo de espera completado, procediendo con la transición");
+
+        // Si estamos en red, usar PhotonNetwork para cambiar la escena
+        if (PhotonNetwork.IsConnected)
+        {
+            Debug.Log("MuerteLava: Cargando FinalFracaso a través de PhotonNetwork");
+            PhotonNetwork.LoadLevel("FinalFracaso");
+        }
+        else
+        {
+            // Intentar usar SceneChange primero
+            SceneChange sceneChanger = FindObjectOfType<SceneChange>();
+            if (sceneChanger != null)
+            {
+                Debug.Log("MuerteLava: Usando SceneChange para ir a FinalFracaso");
+                sceneChanger.GoToEndingFailure();
+            }
+            else
+            {
+                // Fallback: cargar escena directamente
+                Debug.Log("MuerteLava: Cargando FinalFracaso directamente");
+                SceneManager.LoadScene("FinalFracaso");
+            }
+        }
+    }
+
     // ✅ MÉTODOS PARA TESTING
     private void Update()
     {
@@ -333,7 +178,7 @@ public class MuerteLava : MonoBehaviourPunCallbacks
                 if (enableDebugLogs)
                     Debug.Log($"MuerteLava: TEST - Eliminando IA {randomIA.name} manualmente");
                 
-                MostrarMuerteIA(randomIA);
+                PhotonNetwork.Destroy(randomIA);
             }
             else
             {
@@ -351,16 +196,7 @@ public class MuerteLava : MonoBehaviourPunCallbacks
                 if (enableDebugLogs)
                     Debug.Log($"MuerteLava: TEST - Eliminando Player {randomPlayer.name} manualmente");
                 
-                // Llamar directamente al método apropiado
-                PhotonView photonView = randomPlayer.GetComponent<PhotonView>();
-                if (photonView != null && photonView.IsMine)
-                {
-                    MostrarMuerteJugador(randomPlayer);
-                }
-                else
-                {
-                    MostrarMuerteJugadorLocal(randomPlayer);
-                }
+                PhotonNetwork.Destroy(randomPlayer);
             }
             else
             {
@@ -388,14 +224,71 @@ public class MuerteLava : MonoBehaviourPunCallbacks
                 Debug.Log($"  - Player: {player.name}, Activo: {player.activeInHierarchy}, PhotonView: {pv != null}, IsMine: {pv?.IsMine}");
             }
             
-            if (GameManager.Instance != null)
+            if (HexagoniaGameManager.Instance != null)
             {
-                Debug.Log($"GameManager - Jugadores activos: {GameManager.Instance.GetActivePlayerCount()}");
+                Debug.Log($"HexagoniaGameManager - Jugadores activos: {HexagoniaGameManager.Instance.GetPlayersAlive()}");
             }
             else
             {
-                Debug.Log("GameManager no encontrado!");
+                Debug.Log("HexagoniaGameManager no encontrado!");
             }
+        }
+    }
+
+    void OnGUI()
+    {
+        if (enableDebugLogs)
+        {
+            GUILayout.BeginArea(new Rect(10, Screen.height - 100, 300, 90));
+            GUILayout.Box("🔥 MUERTE LAVA DEBUG");
+            
+            if (GUILayout.Button("Test: Eliminar IA Random"))
+            {
+                GameObject[] ias = GameObject.FindGameObjectsWithTag("IA");
+                if (ias.Length > 0)
+                {
+                    GameObject randomIA = ias[Random.Range(0, ias.Length)];
+                    if (enableDebugLogs)
+                        Debug.Log($"MuerteLava: TEST - Eliminando IA {randomIA.name} manualmente");
+                    
+                    PhotonNetwork.Destroy(randomIA);
+                }
+                else
+                {
+                    Debug.Log("No se encontraron IAs para eliminar");
+                }
+            }
+            
+            if (GUILayout.Button("Test: Eliminar Player Random"))
+            {
+                GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
+                if (players.Length > 0)
+                {
+                    GameObject randomPlayer = players[Random.Range(0, players.Length)];
+                    if (enableDebugLogs)
+                        Debug.Log($"MuerteLava: TEST - Eliminando Player {randomPlayer.name} manualmente");
+                    
+                    PhotonNetwork.Destroy(randomPlayer);
+                }
+                else
+                {
+                    Debug.Log("No se encontraron Players para eliminar");
+                }
+            }
+            
+            if (enableDebugLogs)
+            {
+                if (HexagoniaGameManager.Instance != null)
+                {
+                    Debug.Log($"HexagoniaGameManager - Jugadores activos: {HexagoniaGameManager.Instance.GetPlayersAlive()}");
+                }
+                else
+                {
+                    Debug.Log("HexagoniaGameManager no encontrado!");
+                }
+            }
+            
+            GUILayout.EndArea();
         }
     }
 }

@@ -13,12 +13,12 @@ public class SpinningHammer : MonoBehaviour
     public bool randomStartRotation = true; // Rotación inicial aleatoria
     
     [Header("💥 Impact Settings")]
-    public float baseKnockbackForce = 15f; // Fuerza base de empuje (reducida)
-    public float maxKnockbackForce = 30f; // Fuerza máxima de empuje (reducida)
-    public float forceMultiplierBySpeed = 1.2f; // Multiplicador basado en velocidad (reducido)
-    public float stunDuration = 0.8f; // Duración del aturdimiento (reducida)
-    public float minVerticalForce = 8f; // Fuerza vertical mínima (reducida)
-    public float verticalForceMultiplier = 0.5f; // Multiplicador para fuerza vertical (reducido)
+    public float baseKnockbackForce = 30f; // Fuerza base de empuje (aumentada)
+    public float maxKnockbackForce = 50f; // Fuerza máxima de empuje (aumentada)
+    public float forceMultiplierBySpeed = 1.5f; // Multiplicador basado en velocidad (aumentado)
+    public float stunDuration = 0.8f; // Duración del aturdimiento
+    public float minVerticalForce = 15f; // Fuerza vertical mínima (aumentada)
+    public float verticalForceMultiplier = 1.0f; // Multiplicador para fuerza vertical (aumentado)
     
     [Header("📊 Physics Settings")]
     public bool useVariableForce = true; // Fuerza variable según velocidad
@@ -42,6 +42,9 @@ public class SpinningHammer : MonoBehaviour
     public float warningRadius = 3f; // Radio de zona de advertencia
     public bool pauseOnImpact = false; // Pausar brevemente al impactar
     public float pauseDuration = 0.1f;
+    
+    [Header("🔧 Debug")]
+    public bool enableDebugLogs = true;  // Variable para controlar los logs de debug
     
     // Variables privadas
     private float currentSpeed; // Velocidad actual
@@ -86,21 +89,35 @@ public class SpinningHammer : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         hammerCollider = GetComponent<Collider>();
         
-        // Configurar como trigger si no tiene Rigidbody, pero solo si es compatible
-        if (rb == null && hammerCollider != null)
+        // Configurar Rigidbody si no existe
+        if (rb == null)
         {
-            // Verificar si el collider puede ser trigger
-            if (CanBeUsedAsTrigger(hammerCollider))
+            rb = gameObject.AddComponent<Rigidbody>();
+            rb.useGravity = false;
+            rb.isKinematic = true; // Kinematic para que no le afecte la física pero sí las colisiones
+            rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic; // Mejor detección de colisiones
+            Debug.Log($"🔨 {gameObject.name}: Rigidbody añadido y configurado");
+        }
+        
+        // Configurar collider
+        if (hammerCollider != null)
+        {
+            // Asegurar que NO sea trigger
+            hammerCollider.isTrigger = false;
+            
+            // Si es MeshCollider, asegurar que sea convexo
+            if (hammerCollider is MeshCollider meshCollider)
             {
-                hammerCollider.isTrigger = true;
-                Debug.Log($"🔨 {gameObject.name}: Collider configurado como trigger");
+                meshCollider.convex = true;
+                Debug.Log($"🔨 {gameObject.name}: MeshCollider configurado como convexo");
             }
-            else
-            {
-                // Para MeshColliders cóncavos, crear un trigger adicional
-                CreateTriggerCollider();
-                Debug.Log($"🔨 {gameObject.name}: Trigger adicional creado para MeshCollider cóncavo");
-            }
+            
+            // Crear un trigger adicional para detectar impactos
+            CreateTriggerCollider();
+        }
+        else
+        {
+            Debug.LogError($"❌ {gameObject.name}: No tiene collider!");
         }
         
         // Buscar renderer
@@ -281,9 +298,9 @@ public class SpinningHammer : MonoBehaviour
     /// <summary>
     /// 💥 Manejo de colisión con trigger
     /// </summary>
-    void OnTriggerEnter(Collider other)
+    void OnCollisionEnter(Collision collision)
     {
-        HandleImpact(other.gameObject);
+        HandleImpact(collision.gameObject, collision.contacts[0].point);
     }
     
     /// <summary>
@@ -291,7 +308,7 @@ public class SpinningHammer : MonoBehaviour
     /// </summary>
     public void HandleTriggerEnter(Collider other)
     {
-        HandleImpact(other.gameObject);
+        HandleImpact(other.gameObject, other.transform.position);
     }
     
     /// <summary>
@@ -300,30 +317,48 @@ public class SpinningHammer : MonoBehaviour
     public void HandleTriggerExit(Collider other)
     {
         // Actualmente no necesitamos lógica especial para OnTriggerExit
-        // Pero está aquí para futuras expansiones
-    }
-    
-    /// <summary>
-    /// 💥 Manejo de colisión normal
-    /// </summary>
-    void OnCollisionEnter(Collision collision)
-    {
-        HandleImpact(collision.gameObject);
+        // Pero mantenemos el método para compatibilidad con SpinningHammerTrigger
+        if (enableDebugLogs)
+        {
+            Debug.Log($"🔨 Trigger Exit: {other.gameObject.name}");
+        }
     }
     
     /// <summary>
     /// 🎯 Procesar impacto con jugador
     /// </summary>
-    void HandleImpact(GameObject hitObject)
+    void HandleImpact(GameObject hitObject, Vector3 hitPoint)
     {
         // Verificar si es jugador
         if (!IsPlayer(hitObject)) return;
+
+        // Obtener el Rigidbody del jugador
+        Rigidbody playerRb = hitObject.GetComponent<Rigidbody>();
+        if (playerRb == null) return;
+
+        // Calcular dirección y fuerza
+        Vector3 hitDirection = (hitObject.transform.position - transform.position).normalized;
+        float currentForce = GetKnockbackForce();
         
-        // Reproducir sonido de impacto
+        // Calcular dirección de empuje
+        // Mantener la dirección horizontal principalmente, con un pequeño componente vertical
+        Vector3 launchDirection = hitDirection;
+        launchDirection.y = 0.3f; // Reducido componente vertical (antes era Vector3.up)
+        launchDirection.Normalize();
+        
+        // Aplicar fuerza de empuje
+        Vector3 totalForce = launchDirection * currentForce;
+        
+        // Pequeño impulso vertical adicional para evitar que se deslice
+        float verticalBoost = currentForce * 0.2f; // 20% de la fuerza como impulso vertical
+        totalForce.y += verticalBoost;
+        
+        playerRb.velocity = Vector3.zero; // Resetear velocidad actual
+        playerRb.AddForce(totalForce, ForceMode.Impulse);
+
+        // Efectos visuales y sonoros
         PlayImpactSound();
-        
-        // Mostrar efecto de partículas
-        ShowImpactEffect(hitObject.transform.position);
+        ShowImpactEffect(hitPoint);
         
         // Pausar temporalmente si está configurado
         if (pauseOnImpact)
@@ -331,8 +366,11 @@ public class SpinningHammer : MonoBehaviour
             StartCoroutine(PauseRotation());
         }
         
-        // El manejo de fuerzas se hace en LHS_MainPlayer.cs
-        Debug.Log($"🔨 Martillo impactó a: {hitObject.name}");
+        if (enableDebugLogs)
+        {
+            Debug.Log($"🔨 Impacto con fuerza: {totalForce.magnitude} | Dirección: {launchDirection}");
+            Debug.DrawRay(hitPoint, totalForce, Color.red, 2f);
+        }
     }
     
     bool IsPlayer(GameObject obj)
@@ -373,15 +411,14 @@ public class SpinningHammer : MonoBehaviour
     public float GetKnockbackForce()
     {
         if (!useVariableForce)
-        {
             return baseKnockbackForce;
-        }
+            
+        // Calcular fuerza basada en la velocidad actual de rotación
+        float currentRotationSpeed = Mathf.Abs(rotationSpeed);
+        float speedRatio = currentRotationSpeed / 180f; // Normalizar respecto a velocidad base
+        float variableForce = baseKnockbackForce + (speedRatio * forceMultiplierBySpeed);
         
-        // Calcular fuerza basada en velocidad actual
-        float speedRatio = currentSpeed / rotationSpeed;
-        float calculatedForce = baseKnockbackForce + (speedRatio * forceMultiplierBySpeed * baseKnockbackForce);
-        
-        return Mathf.Clamp(calculatedForce, baseKnockbackForce, maxKnockbackForce);
+        return Mathf.Min(variableForce, maxKnockbackForce);
     }
     
     /// <summary>

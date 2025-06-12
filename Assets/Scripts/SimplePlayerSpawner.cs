@@ -12,7 +12,7 @@ public class SimplePlayerSpawner : MonoBehaviourPunCallbacks
     [Header("🎮 Player Settings")]
     public string playerPrefabName = "NetworkPlayer";
     public float respawnHeight = -10f;
-    public bool showDebugInfo = true;
+    public bool showDebugInfo = false;
     
     private bool hasMyPlayer = false;
     private GameObject myPlayerInstance;

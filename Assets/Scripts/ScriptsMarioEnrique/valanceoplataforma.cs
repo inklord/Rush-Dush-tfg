@@ -4,24 +4,38 @@ using UnityEngine;
 
 public class PlataformaBalanceo : MonoBehaviour
 {
-    public float velocidadBalanceo = 2f; // Velocidad de balanceo de la plataforma
-    public float anguloMaximo = 20f; // Máximo ángulo de inclinación
-    public Transform centroPlataforma; // Centro de la plataforma (puede ser un objeto vacío en el centro)
+    [Header("Configuración de Balanceo")]
+    public float velocidadBalanceo = 2f;
+    public float anguloMaximo = 15f;
+    public float velocidadRetorno = 2f;
+    public float factorDistancia = 1.5f; // Multiplicador de efecto según distancia al centro
+    public float amortiguacion = 0.98f; // Factor de amortiguación del movimiento
 
-    private List<Transform> jugadoresIzquierda = new List<Transform>();
-    private List<Transform> jugadoresDerecha = new List<Transform>();
+    [Header("Detección de Jugadores")]
+    public float alturaDeteccion = 2f;
+    public float anchoPlataforma = 5f;
 
+    [Header("Debug")]
+    public bool enableDebugLogs = false;
+
+    private List<(Transform transform, float distanciaCentro)> jugadoresIzquierda = new List<(Transform, float)>();
+    private List<(Transform transform, float distanciaCentro)> jugadoresDerecha = new List<(Transform, float)>();
     private Rigidbody rb;
     private float inclinacionActual = 0f;
     private float inclinacionDeseada = 0f;
+    private float velocidadAngular = 0f; // Velocidad actual de rotación
+    private Quaternion rotacionInicial;
+    private Vector3 centroPlataforma;
+    private Bounds bounds;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-        if (centroPlataforma == null)
-        {
-            centroPlataforma = transform; // Si no se asigna, se usa el transform de la plataforma
-        }
+        rotacionInicial = transform.rotation;
+        
+        bounds = GetComponent<Collider>().bounds;
+        centroPlataforma = bounds.center;
+        anchoPlataforma = bounds.size.z; // Usar Z para el ancho lateral
     }
 
     void Update()
@@ -30,63 +44,112 @@ public class PlataformaBalanceo : MonoBehaviour
         BalancearPlataforma();
     }
 
-    // Calcula el número de jugadores en cada lado de la plataforma
     private void CalcularPeso()
     {
         jugadoresIzquierda.Clear();
         jugadoresDerecha.Clear();
 
-        // Iterar sobre todos los jugadores que estén sobre la plataforma
         foreach (var jugador in GameObject.FindGameObjectsWithTag("Player"))
         {
             if (IsJugadorSobrePlataforma(jugador.transform))
             {
-                float ladoDelJugador = jugador.transform.position.x - centroPlataforma.position.x;
+                float distanciaAlCentro = jugador.transform.position.z - centroPlataforma.z;
+                float distanciaNormalizada = Mathf.Abs(distanciaAlCentro) / (anchoPlataforma * 0.5f);
 
-                if (ladoDelJugador < 0)
+                if (distanciaAlCentro < 0)
                 {
-                    jugadoresIzquierda.Add(jugador.transform); // Jugador en el lado izquierdo
+                    jugadoresIzquierda.Add((jugador.transform, distanciaNormalizada));
                 }
                 else
                 {
-                    jugadoresDerecha.Add(jugador.transform); // Jugador en el lado derecho
+                    jugadoresDerecha.Add((jugador.transform, distanciaNormalizada));
                 }
             }
         }
     }
 
-    // Verifica si el jugador está sobre la plataforma
-    private bool IsJugadorSobrePlataforma(Transform jugador)
-    {
-        // Compara si el jugador está en el rango de la plataforma (puedes ajustar esto según el tamaño de la plataforma)
-        return Mathf.Abs(jugador.position.y - transform.position.y) < 2f; // Ajusta el umbral según sea necesario
-    }
-
-    // Realiza el balanceo de la plataforma hacia el lado con más peso
     private void BalancearPlataforma()
     {
-        // Calculamos el peso en cada lado
-        float pesoIzquierda = jugadoresIzquierda.Count;
-        float pesoDerecha = jugadoresDerecha.Count;
+        // Calcular momento total considerando la distancia al centro
+        float momentoIzquierda = 0f;
+        float momentoDerecha = 0f;
 
-        // Determinamos la inclinación deseada
-        if (pesoIzquierda > pesoDerecha)
+        foreach (var (_, distancia) in jugadoresIzquierda)
         {
-            inclinacionDeseada = anguloMaximo;
+            momentoIzquierda += distancia * factorDistancia;
         }
-        else if (pesoDerecha > pesoIzquierda)
+
+        foreach (var (_, distancia) in jugadoresDerecha)
         {
-            inclinacionDeseada = -anguloMaximo;
+            momentoDerecha += distancia * factorDistancia;
+        }
+
+        float momentoTotal = momentoIzquierda + momentoDerecha;
+        
+        if (momentoTotal > 0)
+        {
+            // Calcular la diferencia de momento
+            float diferenciaMomento = momentoIzquierda - momentoDerecha;
+            
+            // La inclinación deseada depende de la diferencia de momentos
+            inclinacionDeseada = -anguloMaximo * (diferenciaMomento / momentoTotal);
+            
+            // Aplicar física simple
+            float fuerzaRotacion = (inclinacionDeseada - inclinacionActual) * velocidadBalanceo;
+            velocidadAngular += fuerzaRotacion * Time.deltaTime;
+            
+            // Aplicar amortiguación
+            velocidadAngular *= amortiguacion;
         }
         else
         {
-            inclinacionDeseada = 0f; // Sin inclinación si el peso es igual
+            // Retorno a posición inicial más suave
+            inclinacionDeseada = 0f;
+            velocidadAngular += (-inclinacionActual * velocidadRetorno) * Time.deltaTime;
+            velocidadAngular *= amortiguacion;
         }
 
-        // Suavizamos la inclinación actual para no hacer el movimiento tan brusco
-        inclinacionActual = Mathf.Lerp(inclinacionActual, inclinacionDeseada, Time.deltaTime * velocidadBalanceo);
+        // Actualizar inclinación con física
+        inclinacionActual += velocidadAngular * Time.deltaTime;
+        inclinacionActual = Mathf.Clamp(inclinacionActual, -anguloMaximo, anguloMaximo);
 
-        // Aplicamos la rotación final de la plataforma
-        transform.rotation = Quaternion.Euler(0, 0, inclinacionActual);
+        // Aplicar rotación
+        transform.rotation = rotacionInicial * Quaternion.Euler(inclinacionActual, 0, 0);
+        
+        if (enableDebugLogs)
+        {
+            Debug.Log($"🎮 Balanceo - MomentoIzq: {momentoIzquierda:F2}, MomentoDer: {momentoDerecha:F2}, " +
+                     $"Velocidad: {velocidadAngular:F2}, Inclinación: {inclinacionActual:F2}");
+        }
+    }
+
+    private bool IsJugadorSobrePlataforma(Transform jugador)
+    {
+        bool dentroDeAncho = Mathf.Abs(jugador.position.z - centroPlataforma.z) < anchoPlataforma * 0.5f;
+        bool dentroDeAlto = jugador.position.y - centroPlataforma.y < alturaDeteccion;
+        bool encimaDePlataforma = jugador.position.y > centroPlataforma.y;
+
+        if (dentroDeAncho && dentroDeAlto && encimaDePlataforma)
+        {
+            RaycastHit hit;
+            if (Physics.Raycast(jugador.position, Vector3.down, out hit, alturaDeteccion))
+            {
+                return hit.transform == this.transform;
+            }
+        }
+        return false;
+    }
+
+    void OnDrawGizmos()
+    {
+        if (!Application.isPlaying) return;
+
+        Gizmos.color = Color.yellow;
+        Vector3 centro = centroPlataforma;
+        Vector3 tamanio = new Vector3(bounds.size.x, alturaDeteccion, anchoPlataforma);
+        Gizmos.DrawWireCube(centro + Vector3.up * alturaDeteccion * 0.5f, tamanio);
+
+        Gizmos.color = Color.red;
+        Gizmos.DrawLine(centro, centro + Vector3.up * alturaDeteccion);
     }
 }

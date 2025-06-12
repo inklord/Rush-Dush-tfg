@@ -7,9 +7,10 @@ using Photon.Pun;
 public class CheckpointSystem : MonoBehaviourPunCallbacks
 {
     [Header("🚩 Configuración de Checkpoints")]
+    public Transform lastCheckpoint;
     public float respawnHeight = -10f;
     public float respawnDelay = 1f;
-    public bool showDebugGizmos = true;
+    public bool showDebugInfo = true;
 
     [Header("🎮 Efectos")]
     public ParticleSystem respawnEffect;
@@ -17,11 +18,10 @@ public class CheckpointSystem : MonoBehaviourPunCallbacks
     public AudioClip checkpointSound;
 
     // Referencias privadas
-    private Vector3 lastCheckpoint;
-    private bool hasCheckpoint = false;
+    private bool isRespawning = false;
     private AudioSource audioSource;
     private Rigidbody rb;
-    private Animator anim;
+    // private Animator anim; // YA NO NECESARIO - animaciones eliminadas
 
     void Start()
     {
@@ -33,21 +33,17 @@ public class CheckpointSystem : MonoBehaviourPunCallbacks
         }
 
         rb = GetComponent<Rigidbody>();
-        anim = GetComponentInChildren<Animator>();
-
-        // Guardar posición inicial como primer checkpoint
-        lastCheckpoint = transform.position;
-        Debug.Log($"🚩 Checkpoint inicial establecido en: {lastCheckpoint}");
+        // anim = GetComponentInChildren<Animator>(); // YA NO NECESARIO
     }
 
     void Update()
     {
-        // Solo el dueño del objeto puede manejar el respawn
-        if (!photonView.IsMine) return;
-
-        // Verificar si el jugador cayó por debajo del límite
-        if (transform.position.y < respawnHeight)
+        // Si el jugador cae por debajo de cierta altura, respawnear
+        if (transform.position.y < respawnHeight && !isRespawning)
         {
+            if (showDebugInfo)
+                Debug.Log("🔄 Jugador cayó, iniciando respawn...");
+            
             Respawn();
         }
     }
@@ -60,7 +56,7 @@ public class CheckpointSystem : MonoBehaviourPunCallbacks
         // Verificar si es un checkpoint
         if (other.CompareTag("Checkpoint"))
         {
-            UpdateCheckpoint(other.transform.position);
+            SetCheckpoint(other.transform);
         }
     }
 
@@ -79,18 +75,14 @@ public class CheckpointSystem : MonoBehaviourPunCallbacks
     /// <summary>
     /// 🚩 Actualizar posición del checkpoint
     /// </summary>
-    void UpdateCheckpoint(Vector3 newCheckpoint)
+    public void SetCheckpoint(Transform checkpoint)
     {
-        lastCheckpoint = newCheckpoint;
-        hasCheckpoint = true;
-
-        // Efectos de checkpoint
-        if (checkpointSound != null && audioSource != null)
+        if (checkpoint != null)
         {
-            audioSource.PlayOneShot(checkpointSound);
+            lastCheckpoint = checkpoint;
+            if (showDebugInfo)
+                Debug.Log($"✅ Nuevo checkpoint establecido en: {checkpoint.position}");
         }
-
-        Debug.Log($"🚩 Nuevo checkpoint establecido en: {lastCheckpoint}");
     }
 
     /// <summary>
@@ -98,21 +90,37 @@ public class CheckpointSystem : MonoBehaviourPunCallbacks
     /// </summary>
     void Respawn()
     {
-        // Detener movimiento
-        if (rb != null)
+        if (isRespawning) return;
+        isRespawning = true;
+
+        if (lastCheckpoint != null)
         {
-            rb.velocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
+            if (showDebugInfo)
+                Debug.Log($"🔄 Respawneando en último checkpoint: {lastCheckpoint.position}");
+
+            // Desactivar física temporalmente
+            if (rb != null)
+            {
+                rb.isKinematic = true;
+                rb.velocity = Vector3.zero;
+            }
+
+            // Teletransportar al checkpoint
+            transform.position = lastCheckpoint.position;
+            transform.rotation = lastCheckpoint.rotation;
+
+            // Reactivar física
+            if (rb != null)
+            {
+                rb.isKinematic = false;
+            }
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ No hay checkpoint establecido para respawn");
         }
 
-        // Activar animación de caída si existe
-        if (anim != null)
-        {
-            anim.SetBool("isFalling", true);
-        }
-
-        // Teletransportar al último checkpoint
-        transform.position = lastCheckpoint;
+        isRespawning = false;
 
         // Efectos de respawn
         if (respawnEffect != null)
@@ -124,28 +132,23 @@ public class CheckpointSystem : MonoBehaviourPunCallbacks
         {
             audioSource.PlayOneShot(respawnSound);
         }
-
-        // Resetear animación después del respawn
-        if (anim != null)
-        {
-            anim.SetBool("isFalling", false);
-        }
-
-        Debug.Log($"🔄 Jugador respawneado en: {lastCheckpoint}");
     }
 
     void OnDrawGizmos()
     {
-        if (!showDebugGizmos) return;
-
-        // Visualizar último checkpoint
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(lastCheckpoint, 0.5f);
-
-        // Visualizar altura de respawn
+        // Dibujar línea de altura de respawn
+        Vector3 playerPos = transform.position;
+        Vector3 respawnLineStart = new Vector3(playerPos.x - 5f, respawnHeight, playerPos.z);
+        Vector3 respawnLineEnd = new Vector3(playerPos.x + 5f, respawnHeight, playerPos.z);
+        
         Gizmos.color = Color.red;
-        Vector3 respawnLine = transform.position;
-        respawnLine.y = respawnHeight;
-        Gizmos.DrawLine(transform.position, respawnLine);
+        Gizmos.DrawLine(respawnLineStart, respawnLineEnd);
+
+        // Dibujar checkpoint actual si existe
+        if (lastCheckpoint != null)
+        {
+            Gizmos.color = Color.green;
+            Gizmos.DrawWireSphere(lastCheckpoint.position, 1f);
+        }
     }
 } 

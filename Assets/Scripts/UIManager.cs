@@ -22,6 +22,9 @@ public class UIManager : MonoBehaviour
     [Header("📊 Ranking")]
     public Text curRankUI;
     
+    [Header("🔧 Debug")]
+    public bool enableDebugLogs = true;  // Habilitar logs de debug
+    
     // Variables internas
     int min;
     float sec;
@@ -75,7 +78,13 @@ public class UIManager : MonoBehaviour
         {
             curRank = value;
             if (curRankUI != null)
-                curRankUI.text = curRank + " / 20 ";
+            {
+                // Solo mostrar el número de clasificados
+                curRankUI.text = $"{curRank}";
+                
+                if (enableDebugLogs)
+                    Debug.Log($"📊 Jugadores clasificados: {curRank}");
+            }
         }
     }
 
@@ -91,6 +100,11 @@ public class UIManager : MonoBehaviour
         // Resetear variables de estado
         gameEnded = false;
         resultShown = false;
+        playerClassified = false;
+        classifiedPanelShown = false;
+        
+        // Inicializar el contador
+        CurRank = 0;
         
         if (isHexagoniaLevel)
         {
@@ -110,10 +124,30 @@ public class UIManager : MonoBehaviour
     {
         if (player == null)
         {
+            // Buscar por nombre exacto primero
             player = GameObject.Find("Player");
+            
+            // Si no lo encuentra, buscar por tag
             if (player == null)
             {
-                player = GameObject.FindWithTag("Player");
+                GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
+                if (players.Length > 0)
+                {
+                    // Tomar el primer jugador encontrado
+                    player = players[0];
+                    Debug.Log($"🎮 Jugador encontrado por tag: {player.name}");
+                }
+            }
+            
+            // Si aún no lo encuentra, buscar por componente LHS_MainPlayer
+            if (player == null)
+            {
+                LHS_MainPlayer mainPlayer = FindObjectOfType<LHS_MainPlayer>();
+                if (mainPlayer != null)
+                {
+                    player = mainPlayer.gameObject;
+                    Debug.Log($"🎮 Jugador encontrado por componente: {player.name}");
+                }
             }
         }
         
@@ -123,14 +157,21 @@ public class UIManager : MonoBehaviour
         }
         else
         {
-            Debug.LogError("❌ No se pudo encontrar al jugador! Verifica que tenga el tag 'Player' o el nombre 'Player'");
+            Debug.LogWarning("⚠️ No se pudo encontrar al jugador! Se reintentará en el próximo frame");
+            // Reintentar en el siguiente frame
+            StartCoroutine(RetryFindPlayer());
         }
+    }
+
+    IEnumerator RetryFindPlayer()
+    {
+        yield return null;
+        FindPlayer();
     }
 
     void Update()
     {
-        // Solo actualizar timer si NO es Hexagonia (el GameManager maneja Hexagonia)
-        if (!gameEnded && !isHexagoniaLevel)
+        if (!gameEnded)
         {
             UpdateTimer();
         }
@@ -157,11 +198,59 @@ public class UIManager : MonoBehaviour
         }
         else
         {
-            // ⏰ TIEMPO AGOTADO - Mostrar resultado inmediatamente
+            // ⏰ TIEMPO AGOTADO - Mostrar resultado y hacer transición
             textTimer.text = "<color=red>Time Over</color>";
             gameEnded = true;
-            ShowGameResult();
+            
+            if (enableDebugLogs)
+                Debug.Log($"⏰ Tiempo agotado - Total clasificados: {curRank}");
+            
+            // Programar transición después de un breve delay
+            StartCoroutine(TransitionToNextLevelAfterDelay(2f));
         }
+    }
+
+    /// <summary>
+    /// 🟡 Mostrar clasificado inmediatamente cuando el jugador llega a la meta
+    /// Pero esperar al countdown antes de hacer transición
+    /// </summary>
+    public void ShowClassifiedImmediate()
+    {
+        // Solo para niveles clasificatorios
+        if (!isClassificationLevel)
+        {
+            Debug.LogWarning("⚠️ ShowClassifiedImmediate llamado en nivel no clasificatorio");
+            return;
+        }
+        
+        // Evitar múltiples activaciones
+        if (playerClassified)
+        {
+            Debug.Log("🟡 Jugador ya clasificado - ignorando");
+            return;
+        }
+        
+        // Marcar como clasificado y mostrar panel
+        playerClassified = true;
+        
+        if (success != null && !classifiedPanelShown)
+        {
+            success.SetActive(true);
+            classifiedPanelShown = true;
+            Debug.Log("🟡 Panel de CLASIFICADO activado");
+            
+            // Reactivar animator del éxito
+            Animator successAnimator = success.GetComponent<Animator>();
+            if (successAnimator != null)
+            {
+                successAnimator.enabled = true;
+                Debug.Log("🎬 Animación de clasificado activada");
+        }
+        }
+        
+        // NO programar transición - esperar a que se acabe el tiempo
+        if (enableDebugLogs)
+            Debug.Log("⏰ Esperando a que se acabe el tiempo para transición...");
     }
 
     /// <summary>
@@ -172,10 +261,15 @@ public class UIManager : MonoBehaviour
         if (resultShown) return;
         resultShown = true;
 
+        // Si no tenemos jugador, intentar encontrarlo
+        if (player == null)
+        {
+            FindPlayer();
         if (player == null)
         {
             Debug.LogError("❌ No se puede mostrar resultado: jugador no encontrado");
             return;
+            }
         }
 
         // Deshabilitar scripts que puedan interferir
@@ -189,14 +283,16 @@ public class UIManager : MonoBehaviour
             return;
         }
 
-        // Verificar posición del jugador para determinar éxito o fracaso
-        bool isSuccess = player.transform.position.z > 560;
-        
-        Debug.Log($"🎯 Posición del jugador: {player.transform.position}");
-        Debug.Log($"🎯 Posición Z: {player.transform.position.z}");
-        Debug.Log($"🎯 Resultado: {(isSuccess ? "ÉXITO/CLASIFICADO" : "FRACASO")}");
+        // En niveles clasificatorios, esperar a que el jugador llegue a la meta
+        if (isClassificationLevel)
+        {
+            Debug.Log("🟡 Esperando a que el jugador llegue a la meta...");
+            return;
+        }
 
-        StartCoroutine(ShowResultWithDelay(isSuccess));
+        // Para otros niveles, mostrar fracaso
+        Debug.Log("💀 Mostrando panel de FRACASO (tiempo agotado)");
+        StartCoroutine(ShowResultWithDelay(false));
     }
 
     void DisableInterferingScripts()
@@ -413,57 +509,6 @@ public class UIManager : MonoBehaviour
             gameEnded = true;
             resultShown = true;
             StartCoroutine(ShowResultWithDelay(false));
-        }
-    }
-    
-    /// <summary>
-    /// 🟡 Mostrar clasificado inmediatamente cuando el jugador llega a la meta
-    /// Pero esperar al countdown antes de hacer transición
-    /// </summary>
-    public void ShowClassifiedImmediate()
-    {
-        // Solo para niveles clasificatorios
-        if (!isClassificationLevel)
-        {
-            Debug.LogWarning("⚠️ ShowClassifiedImmediate llamado en nivel no clasificatorio");
-            return;
-        }
-        
-        // Evitar múltiples activaciones
-        if (playerClassified)
-        {
-            Debug.Log("🟡 Jugador ya clasificado - ignorando");
-            return;
-        }
-        
-        playerClassified = true;
-        
-        Debug.Log("🏁 ¡JUGADOR CLASIFICADO! Mostrando panel inmediatamente...");
-        
-        // Mostrar panel de clasificado inmediatamente
-        if (success != null && !classifiedPanelShown)
-        {
-            classifiedPanelShown = true;
-            
-            // Desactivar panel de fracaso si estaba activo
-            if (failure != null) failure.SetActive(false);
-            
-            // Activar panel de éxito/clasificado
-            success.SetActive(true);
-            
-            // Reactivar animator del éxito
-            Animator successAnimator = success.GetComponent<Animator>();
-            if (successAnimator != null) 
-            {
-                successAnimator.enabled = true;
-                Debug.Log("🎬 Animación de CLASIFICADO activada");
-            }
-            
-            Debug.Log("🟡 Panel de CLASIFICADO mostrado - esperando countdown...");
-        }
-        else
-        {
-            Debug.LogError("❌ No se pudo mostrar panel de clasificado - success panel no encontrado");
         }
     }
 }

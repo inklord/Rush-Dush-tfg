@@ -31,6 +31,10 @@ public class LHS_CountdownController : MonoBehaviour
     public AudioClip startsfx;
     public AudioClip gosfx;
 
+    // Game state
+    private bool countdownFinished = false;
+    private HexagoniaGameManager hexagoniaManager;
+
     private void Awake()
     {
         // ✅ Verificar componentes críticos
@@ -67,6 +71,13 @@ public class LHS_CountdownController : MonoBehaviour
             Debug.LogWarning("LHS_CountdownController: AudioClip gosfx no está asignado");
         }
         
+        // Buscar HexagoniaGameManager
+        hexagoniaManager = FindObjectOfType<HexagoniaGameManager>();
+        if (hexagoniaManager == null)
+        {
+            Debug.LogWarning("LHS_CountdownController: No se encontró HexagoniaGameManager");
+        }
+        
         StartCoroutine(CountdownToStart());
 
         // ✅ Verificar GameObjects UI antes de usarlos
@@ -81,12 +92,14 @@ public class LHS_CountdownController : MonoBehaviour
     //ڷƾ Լ 
     IEnumerator CountdownToStart()
     {
-        //Bar.SetActive(true);
+        // Asegurarse de que todos los números estén ocultos al inicio
+        if (Num_A != null) Num_A.SetActive(false);
+        if (Num_B != null) Num_B.SetActive(false);
+        if (Num_C != null) Num_C.SetActive(false);
+        if (Num_GO != null) Num_GO.SetActive(false);
 
         while (countdownTime > 0)
         {
-            //Bar.SetActive(true);
-
             ChangeImage();
 
             if (countdownDisplay != null)
@@ -94,26 +107,43 @@ public class LHS_CountdownController : MonoBehaviour
                 countdownDisplay.text = countdownTime.ToString();
             }
 
-            // 1 
             yield return new WaitForSecondsRealtime(1f);
-
             countdownTime--;
         }
 
-        //   
+        // Mostrar GO!
         if (countdownDisplay != null)
         {
             countdownDisplay.text = "GO!";
         }
-        //Num_GO.SetActive(false);
+        
+        if (Num_GO != null)
+        {
+            // Asegurarse de que GO! sea el único visible
+            Num_A.SetActive(false);
+            Num_B.SetActive(false);
+            Num_C.SetActive(false);
+            Num_GO.SetActive(true);
+        }
 
+        PlaySoundSafe(gosfx);
         Time.timeScale = 1;
+        countdownFinished = true;
 
         yield return new WaitForSecondsRealtime(1f);
 
+        // Ocultar todo al final
         if (countdownDisplay != null)
         {
             countdownDisplay.gameObject.SetActive(false);
+        }
+        
+        if (Num_GO != null) Num_GO.SetActive(false);
+
+        // Notificar al HexagoniaGameManager que el countdown terminó
+        if (hexagoniaManager != null)
+        {
+            hexagoniaManager.OnCountdownFinished();
         }
     }
 
@@ -121,6 +151,13 @@ public class LHS_CountdownController : MonoBehaviour
     {
         int i = countdownTime;
 
+        // Primero, ocultar todos los números
+        if (Num_A != null) Num_A.SetActive(false);
+        if (Num_B != null) Num_B.SetActive(false);
+        if (Num_C != null) Num_C.SetActive(false);
+        if (Num_GO != null) Num_GO.SetActive(false);
+
+        // Luego, mostrar solo el número actual
         if (i == 4)
         {
             if (Num_C != null)
@@ -133,46 +170,33 @@ public class LHS_CountdownController : MonoBehaviour
                 animator.SetBool("Num3", true);
             }
             
-            // ✅ Verificación de null antes de reproducir sonido
             PlaySoundSafe(startsfx);
         }
-
-        if (i == 3)
+        else if (i == 3)
         {
-            //Num_C.SetActive(false);
             if (Num_B != null)
             {
                 Num_B.SetActive(true);
             }
-            //animator.SetBool("Num3", true);
             
-            // ✅ Verificación de null antes de reproducir sonido
             PlaySoundSafe(startsfx);
         }
-
-        if (i == 2)
+        else if (i == 2)
         {
-            //Num_B.SetActive(false);
             if (Num_A != null)
             {
                 Num_A.SetActive(true);
             }
-            //animator.SetBool("Num3", true);
             
-            // ✅ Verificación de null antes de reproducir sonido
             PlaySoundSafe(startsfx);
         }
-
-        if (i == 1)
+        else if (i == 1)
         {
-            //Num_A.SetActive(false);
             if (Num_GO != null)
             {
                 Num_GO.SetActive(true);
             }
-            //animator.SetBool("Num3", true);
             
-            // ✅ Verificación de null antes de reproducir sonido
             PlaySoundSafe(gosfx);
         }
     }
@@ -182,29 +206,16 @@ public class LHS_CountdownController : MonoBehaviour
     /// </summary>
     private void PlaySoundSafe(AudioClip clip)
     {
-        // Verificar que tanto el AudioSource como el AudioClip no sean null
-        if (mysfx != null && clip != null)
+        if (mysfx != null && clip != null && !mysfx.isPlaying)
         {
-            try
-            {
-                mysfx.PlayOneShot(clip);
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogWarning($"LHS_CountdownController: Error al reproducir sonido: {e.Message}");
-            }
+            mysfx.clip = clip;
+            mysfx.Play();
         }
-        else
-        {
-            if (mysfx == null)
-            {
-                Debug.LogWarning("LHS_CountdownController: AudioSource (mysfx) es null - no se puede reproducir sonido");
-            }
-            if (clip == null)
-            {
-                Debug.LogWarning("LHS_CountdownController: AudioClip es null - no se puede reproducir sonido");
-            }
-        }
+    }
+
+    public bool IsCountdownFinished()
+    {
+        return countdownFinished;
     }
 }
 

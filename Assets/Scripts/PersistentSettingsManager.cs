@@ -15,7 +15,7 @@ public class PersistentSettingsManager : MonoBehaviour
     public AudioMixer masterAudioMixer;
     
     [Header("📊 Debug Settings")]
-    public bool enableDebugLogs = true;
+    public bool enableDebugLogs = false;
     public bool showDebugUI = false;
     
     // Singleton

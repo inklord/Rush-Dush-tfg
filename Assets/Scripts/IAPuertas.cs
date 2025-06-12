@@ -9,7 +9,7 @@ public class IAPuertas : MonoBehaviour
     public float distanciaComprobacion = 1.5f;
     public float tiempoBloqueoParaDescartar = 1.2f;
     public string tagPuerta = "Puerta";
-    public string tagDestinoFinal = "RealDestPos";
+    public string tagDestinoFinal = "Player";
     public bool esLider = false; // Indica si esta IA es la que sabe qué puerta es la correcta
     [Header("Configuración de Comportamiento")]
     public float tiempoMinEspera = 0.2f;
@@ -34,7 +34,7 @@ public class IAPuertas : MonoBehaviour
     {
         agent = GetComponent<NavMeshAgent>();
         rigid = GetComponent<Rigidbody>();
-        destinoFinal = GameObject.FindGameObjectWithTag(tagDestinoFinal);
+        destinoFinal = GameObject.Find("DestinationPos");
         ultimaPosicion = transform.position;
         tiempoEsperaAntesDeEntrar = Random.Range(0.2f, 1f);
         Invoke("BuscarPuertaInicial", 0.2f);

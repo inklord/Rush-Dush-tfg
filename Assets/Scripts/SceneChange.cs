@@ -3,9 +3,13 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using Photon.Pun;
 
 public class SceneChange : MonoBehaviour
 {
+    [Header("Transición por Lava")]
+    public float delayBeforeFracaso = 2f; // Tiempo de espera antes de ir a FinalFracaso
+
     void Update()
     {
         string currentScene = SceneManager.GetActiveScene().name;
@@ -18,7 +22,7 @@ public class SceneChange : MonoBehaviour
                 Input.GetMouseButtonDown(0))
             {
                 Debug.Log("🎬 SceneChange: Saltando desde Intro a InGame");
-                SceneManager.LoadScene("InGame");
+                LoadScene("InGame");
             }
         }
 
@@ -26,7 +30,8 @@ public class SceneChange : MonoBehaviour
         {
             if (Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.Tilde))
             {
-                SceneManager.LoadScene("Carrera");
+                Debug.Log("🏁 SceneChange: Cambiando de InGame a Carrera");
+                LoadScene("Carrera");
             }
         }
 
@@ -34,7 +39,8 @@ public class SceneChange : MonoBehaviour
         {
             if (Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.Tilde))
             {
-                SceneManager.LoadScene("Hexagonia");
+                Debug.Log("⬡ SceneChange: Cambiando de Carrera a Hexagonia");
+                LoadScene("Hexagonia");
             }
         }
 
@@ -42,88 +48,145 @@ public class SceneChange : MonoBehaviour
         {
             if (Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.Tilde))
             {
-                SceneManager.LoadScene("Ending");
+                Debug.Log("🏆 SceneChange: Cambiando de Hexagonia a Ending");
+                LoadScene("Ending");
             }
         }
     }
 
+    /// <summary>
+    /// 🌐 Método unificado para cargar escenas (soporta multijugador)
+    /// </summary>
+    private void LoadScene(string sceneName)
+    {
+        // Verificar si estamos en modo multijugador
+        if (PhotonNetwork.IsConnected && PhotonNetwork.InRoom)
+        {
+            // 🌐 MODO MULTIJUGADOR - Solo el MasterClient puede cambiar escenas
+            if (PhotonNetwork.IsMasterClient)
+            {
+                Debug.Log($"🌐 [MULTIJUGADOR] MasterClient cambiando a escena: {sceneName}");
+                PhotonNetwork.LoadLevel(sceneName);
+            }
+            else
+            {
+                Debug.Log($"⚠️ [MULTIJUGADOR] Solo el host puede cambiar de escena (tecla º ignorada)");
+                // Opcional: mostrar mensaje en pantalla para jugadores no-host
+                ShowNonHostMessage();
+            }
+        }
+        else
+        {
+            // 🎮 MODO SINGLEPLAYER - Cambio normal
+            Debug.Log($"🎮 [SINGLEPLAYER] Cambiando a escena: {sceneName}");
+            SceneManager.LoadScene(sceneName);
+        }
+    }
+
+    /// <summary>
+    /// ⚠️ Mostrar mensaje cuando jugador no-host intenta cambiar escena
+    /// </summary>
+    private void ShowNonHostMessage()
+    {
+        // Opcional: mostrar un mensaje temporal en pantalla
+        // StartCoroutine(ShowTemporaryMessage("Solo el host puede cambiar de escena"));
+    }
+
     public void LoginSceneChange()
     {
-        SceneManager.LoadScene("Lobby");
+        LoadScene("Lobby");
     }
 
     public void LobbySceneChange()
     {
-        SceneManager.LoadScene("Intro");
+        LoadScene("Intro");
     }
 
     public void StartGameSceneChange()
     {
-        SceneManager.LoadScene("Intro");
+        LoadScene("Intro");
     }
 
     public void IntroSceneChange()
     {
-        SceneManager.LoadScene("InGame");
+        LoadScene("InGame");
     }
 
     public void InGameSceneChange()
     {
-        SceneManager.LoadScene("Carrera");
+        LoadScene("Carrera");
     }
 
     public void CarreraSceneChange()
     {
-        SceneManager.LoadScene("Hexagonia");
+        LoadScene("Hexagonia");
     }
 
     public void HexagoniaSceneChange()
     {
-        SceneManager.LoadScene("Ending");
+        LoadScene("Ending");
     }
 
     public void EndingSceneChange()
     {
-        SceneManager.LoadScene("Lobby");
+        LoadScene("Lobby");
     }
 
     public void GoToCarrera()
     {
-        SceneManager.LoadScene("Carrera");
+        LoadScene("Carrera");
     }
 
     public void GoToHexagonia()
     {
-        SceneManager.LoadScene("Hexagonia");
+        LoadScene("Hexagonia");
     }
 
     public void GoToInGame()
     {
-        SceneManager.LoadScene("InGame");
+        LoadScene("InGame");
     }
 
     public void GoToEnding()
     {
-        SceneManager.LoadScene("Ending");
+        LoadScene("Ending");
     }
 
     public void RestartGame()
     {
-        SceneManager.LoadScene("Lobby");
+        LoadScene("Lobby");
     }
 
     public void GoToEndingSuccess()
     {
-        SceneManager.LoadScene("Ending");
+        LoadScene("Ending");
     }
     
     public void GoToEndingFailure()
     {
-        SceneManager.LoadScene("FinalFracaso");
+        StartCoroutine(GoToFinalFracasoWithDelay());
+    }
+
+    private IEnumerator GoToFinalFracasoWithDelay()
+    {
+        Debug.Log("💀 SceneChange: Iniciando transición a FinalFracaso...");
+        
+        // Esperar el delay configurado
+        yield return new WaitForSeconds(delayBeforeFracaso);
+        
+        Debug.Log("💀 SceneChange: Cargando escena FinalFracaso");
+        LoadScene("FinalFracaso");
     }
 
     public void FinalFracasoSceneChange()
     {
-        SceneManager.LoadScene("Lobby");
+        LoadScene("Lobby");
+    }
+
+    // Nuevo método específico para muerte por lava
+    public void HandleLavaDeath()
+    {
+        Debug.Log("💀 SceneChange: Jugador tocó lava, iniciando transición a FinalFracaso");
+        StartCoroutine(GoToFinalFracasoWithDelay());
     }
 }

@@ -10,7 +10,8 @@ public class CursorManager : MonoBehaviour
     
     [Header("🎮 Estado del Cursor")]
     public bool cursorLocked = true;
-    public bool showDebug = true;
+    [Header("🖱️ Configuración")]
+    public bool showDebug = false;
     
     // Estados del juego
     private bool inMenu = false;

@@ -7,20 +7,39 @@ public class AINavMesh : MonoBehaviour
     GameObject destPos;
     NavMeshAgent agent;
     Rigidbody rigid;
-    // Start is called before the first frame update
+    
+    [Header("🔧 Debug")]
+    public bool enableDebugLogs = true;
+    
     void Start()
     {
         rigid = GetComponent<Rigidbody>();
         agent = GetComponent<NavMeshAgent>();
-        destPos = GameObject.Find("RealDestPos");
+        
+        // Buscar DestinationPos en lugar de RealDestPos
+        destPos = GameObject.Find("DestinationPos");
+        
+        if (destPos == null)
+        {
+            Debug.LogError("❌ AINavMesh: No se encontró el objeto DestinationPos");
+        }
+        else if (enableDebugLogs)
+        {
+            Debug.Log($"🎯 AINavMesh: Destino configurado a {destPos.name}");
+        }
     }
 
-    // Update is called once per frame
     void FixedUpdate()
     {
-        agent.SetDestination(destPos.transform.position);
+        if (destPos != null)
+        {
+            agent.SetDestination(destPos.transform.position);
+            if (enableDebugLogs && Vector3.Distance(transform.position, destPos.transform.position) < 1f)
+            {
+                Debug.Log($"🏃 AINavMesh: {gameObject.name} llegó al destino");
+            }
+        }
         FreezeRotation();
-
     }
 
     void FreezeRotation()

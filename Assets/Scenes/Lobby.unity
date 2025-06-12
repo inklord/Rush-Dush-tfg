@@ -876,7 +876,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -174, y: 454}
+  m_AnchoredPosition: {x: -221, y: 454}
   m_SizeDelta: {x: 108.026, y: 56.673}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &105848042
@@ -1413,6 +1413,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c71d2872c78ba941bec531ff046236a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  delayBeforeFracaso: 2
 --- !u!4 &498892517
 Transform:
   m_ObjectHideFlags: 0
@@ -1712,6 +1713,7 @@ MonoBehaviour:
   - InGame
   - Carrera
   - Hexagonia
+  showDebugLogs: 0
 --- !u!4 &689632373
 Transform:
   m_ObjectHideFlags: 0
@@ -2544,7 +2546,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -225, y: 121}
+  m_AnchoredPosition: {x: -268, y: 121}
   m_SizeDelta: {x: 750, y: 500}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &833563213

@@ -6,12 +6,13 @@ public class LHS_Respawn2 : MonoBehaviour
 {
     [SerializeField] float spawnValue;
     [SerializeField] GameObject player;
-
-    //[SerializeField] private Transform player;
     [SerializeField] Transform respawnPoint;
 
-    //���������� ������ ����
-    Animator anim;
+    [Header("🔧 Debug Settings")]
+    public bool showDebugLogs = true;
+
+    // Animator reference - YA NO NECESARIO (animaciones eliminadas)
+    // Animator anim;
 
     private RaycastHit hit;
     private int layerMask;
@@ -20,61 +21,102 @@ public class LHS_Respawn2 : MonoBehaviour
 
     void Awake()
     {
-        anim = player.GetComponentInChildren<Animator>();
-        layerMask = 1 << 7;
+        if (player != null)
+        {
+            // Animator ya no necesario - animaciones eliminadas
+            // anim = player.GetComponentInChildren<Animator>();
+            if (showDebugLogs) Debug.Log($"✅ Player asignado: {player.name} (sin animaciones de caída)");
+        }
+        else
+        {
+            Debug.LogError("❌ Player no asignado en LHS_Respawn2");
+        }
+        
+        layerMask = 1 << 7; // Layer 7
         resp = GetComponent<AudioSource>();
+        
+        if (showDebugLogs)
+        {
+            Debug.Log($"🎯 LHS_Respawn2 inicializado:");
+            Debug.Log($"   Layer Mask: {layerMask} (Layer 7)");
+            Debug.Log($"   Distance: {distance}");
+            Debug.Log($"   Player: {(player != null ? player.name : "NULL")}");
+            Debug.Log($"   RespawnPoint: {(respawnPoint != null ? respawnPoint.name : "NULL")}");
+        }
     }
 
     private void FixedUpdate()
     {
-        /*
-        if (player.transform.position.y < -spawnValue)
-        {
-            DownPlayer();
-        }
-        */
+        if (player == null) return;
         
-        // �÷��̾ �������� ���̸� ���µ�
-        // RespawnTrigger�� �Ÿ��� Distance ���̶��
-        // DownPlayer�� ���� ��Ű�� �ʹ�
-        // DownPlayer �ִϸ��̼ǵ� �����Ű�� �ʹ�.
-
-        if (player != null && Physics.Raycast(player.transform.position, -player.transform.up, out hit, distance, layerMask))
+        // Detectar si el jugador está cayendo (Layer 7 = superficie de caída)
+        if (Physics.Raycast(player.transform.position, -player.transform.up, out hit, distance, layerMask))
         {
-            //RespSound();
-            DownPlayer();
-            resp.Play();
+            // Solo reproducir sonido, SIN animación
+            if (showDebugLogs)
+            {
+                Debug.Log($"🔍 Jugador empezó a caer - Raycast detectó: {hit.collider.name} en layer {hit.collider.gameObject.layer}");
+            }
+            // DownPlayer(); // DESHABILITADO - No más animación de caída
+            if (resp != null) resp.Play();
         }
-        
     }
 
     void DownPlayer()
     {
-        anim.SetBool("isFalling", true);
-        //resp.Play();
+        // MÉTODO DESHABILITADO - No más animación de caída
+        if (showDebugLogs) Debug.Log("💥 Jugador cayendo - Animación de caída DESHABILITADA");
+        
+        // Código anterior comentado:
+        // if (anim != null)
+        // {
+        //     anim.SetBool("isFalling", true);
+        // }
     }
 
-    // RaspawnTrigger�� �浹������ ������ �������� ���ư��� �ʹ�
-    // �ִϸ��̼ǵ� ���� �ʹ�.
+    // Respawn trigger collision - Reset player to respawn point
     private void OnTriggerEnter(Collider other)
     {
+        if (showDebugLogs)
+        {
+            Debug.Log($"🔍 Trigger detectado: {other.name} con tag: {other.tag}");
+        }
+        
         if(other.CompareTag("Player"))
         {
-
+            if (showDebugLogs) Debug.Log("✅ Tag Player confirmado - Iniciando respawn");
             
-            anim.SetBool("isFalling", false);
-
-            player.transform.position = respawnPoint.transform.position;
-            //player.transform.GetChild(0).transform.position = new Vector3(0, 0.09f, 0);
-            // ��ȯ��������� ���������� ����
-            //Physics.SyncTransforms();
+            // Animación de caída eliminada del proyecto
+            if (showDebugLogs) Debug.Log("🎬 Respawn completado - SIN animación de caída");
             
+            // Código anterior comentado:
+            // if (anim != null)
+            // {
+            //     anim.SetBool("isFalling", false);
+            // }
+
+            if (respawnPoint != null)
+            {
+                Vector3 oldPos = player.transform.position;
+                player.transform.position = respawnPoint.transform.position;
+                if (showDebugLogs)
+                {
+                    Debug.Log($"🎯 Jugador respawneado:");
+                    Debug.Log($"   De: {oldPos}");
+                    Debug.Log($"   A: {respawnPoint.transform.position}");
+                }
+            }
+            else
+            {
+                Debug.LogError("❌ RespawnPoint no asignado");
+            }
+            
+            // Asegurar que la física se actualice
+            Physics.SyncTransforms();
+        }
+        else
+        {
+            if (showDebugLogs) Debug.Log($"❌ Tag incorrecto: {other.tag} (esperado: Player)");
         }
     }
-    /*public void RespSound()
-    {
-        AudioSource resp = GetComponent<AudioSource>();
-        resp.Play();
-    }
-    */
 }

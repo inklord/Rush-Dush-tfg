@@ -1,8 +1,10 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using Photon.Pun;
+using Photon.Realtime;
+using System.Collections;
+using System.Collections.Generic;
 
 public class GameManager : MonoBehaviour
 {
@@ -20,8 +22,8 @@ public class GameManager : MonoBehaviour
     public GameObject winPanel;                 // Panel de victoria (opcional)
     public Text winnerText;                     // Texto del ganador (opcional)
     
-    [Header("Debug")]
-    public bool enableDebugLogs = true;
+    [Header("🔧 Debug")]
+    public bool enableDebugLogs = false;
     
     // Variables privadas
     private List<GameObject> activePlayers = new List<GameObject>();
@@ -32,6 +34,7 @@ public class GameManager : MonoBehaviour
     // Variables para Hexagonia
     private float hexagoniaTimeRemaining;
     private bool hexagoniaTimerStarted = false;
+    private HexagoniaGameManager hexagoniaManager;
     
     // Singleton para fácil acceso
     public static GameManager Instance;
@@ -47,29 +50,63 @@ public class GameManager : MonoBehaviour
         else
         {
             Destroy(gameObject);
+            return;
         }
         
-        // Auto-detectar si estamos en Hexagonia
-        if (SceneManager.GetActiveScene().name == "Hexagonia")
+        // Auto-detectar tipo de escena
+        string currentScene = SceneManager.GetActiveScene().name;
+        
+        if (currentScene == "Hexagonia")
         {
             isHexagoniaLevel = true;
             if (enableDebugLogs)
-                Debug.Log("🔵 GameManager: Detectado nivel Hexagonia - Timer de 3 minutos activado");
+                Debug.Log("🔵 GameManager: Detectado nivel Hexagonia - Delegando control a HexagoniaGameManager");
+            
+            // Buscar o crear HexagoniaGameManager
+            hexagoniaManager = FindObjectOfType<HexagoniaGameManager>();
+            if (hexagoniaManager == null)
+            {
+                GameObject hmObj = new GameObject("HexagoniaGameManager");
+                hexagoniaManager = hmObj.AddComponent<HexagoniaGameManager>();
+                
+                // Configurar referencias
+                hexagoniaManager.timerText = hexagoniaTimerText;
+                hexagoniaManager.gameDuration = hexagoniaTimerDuration;
+                
+                if (enableDebugLogs)
+                    Debug.Log("🔵 GameManager: HexagoniaGameManager creado y configurado");
+            }
+        }
+        else if (currentScene == "Carrera" || currentScene == "InGame")
+        {
+            isHexagoniaLevel = false;
+            if (enableDebugLogs)
+                Debug.Log($"🏁 GameManager: Detectado nivel de CARRERA - '{currentScene}' - Victoria por llegada a meta");
+        }
+        else
+        {
+            isHexagoniaLevel = false;
+            if (enableDebugLogs)
+                Debug.Log($"🎮 GameManager: Nivel estándar detectado - '{currentScene}'");
         }
     }
     
     private void Start()
     {
+        if (!isHexagoniaLevel)
+    {
         InitializePlayerTracking();
         StartCoroutine(CheckFallenPlayers());
-        
-        // Inicializar timer de Hexagonia si corresponde
-        if (isHexagoniaLevel)
-        {
-            InitializeHexagoniaTimer();
+            UpdateUI();
         }
+    }
         
-        UpdateUI();
+    private void Update()
+    {
+        if (!isHexagoniaLevel)
+        {
+            UpdateUI();
+        }
     }
     
     private void InitializeHexagoniaTimer()
@@ -79,15 +116,6 @@ public class GameManager : MonoBehaviour
         
         if (enableDebugLogs)
             Debug.Log($"🔵 GameManager: Timer de Hexagonia iniciado - {hexagoniaTimerDuration} segundos ({hexagoniaTimerDuration/60f:F1} minutos)");
-    }
-    
-    private void Update()
-    {
-        // Solo para Hexagonia: Actualizar timer
-        if (isHexagoniaLevel && hexagoniaTimerStarted && !gameEnded)
-        {
-            UpdateHexagoniaTimer();
-        }
     }
     
     private void UpdateHexagoniaTimer()
@@ -226,8 +254,21 @@ public class GameManager : MonoBehaviour
         
         initialPlayerCount = activePlayers.Count;
         
+        string currentScene = SceneManager.GetActiveScene().name;
+        bool isRaceLevel = (currentScene == "Carrera" || currentScene == "InGame");
+        
         if (enableDebugLogs)
-            Debug.Log($"GameManager: {foundIAs.Length} IAs + {foundPlayers.Length} Players = {initialPlayerCount} jugadores totales");
+        {
+            if (isRaceLevel)
+            {
+                Debug.Log($"🏁 GameManager [CARRERA]: {foundIAs.Length} IAs + {foundPlayers.Length} Players = {initialPlayerCount} jugadores totales");
+                Debug.Log($"🏁 En carreras, victoria se determina por llegada a meta, NO por eliminación");
+            }
+            else
+            {
+                Debug.Log($"GameManager: {foundIAs.Length} IAs + {foundPlayers.Length} Players = {initialPlayerCount} jugadores totales");
+            }
+        }
     }
     
     private IEnumerator CheckFallenPlayers()
@@ -327,32 +368,74 @@ public class GameManager : MonoBehaviour
     
     private void CheckWinCondition()
     {
-        // ✅ Condición 1: Último jugador en pie (siempre)
-        if (activePlayers.Count <= 1 && !gameEnded)
+        string currentScene = SceneManager.GetActiveScene().name;
+        bool isRaceLevel = (currentScene == "Carrera" || currentScene == "InGame");
+        
+        if (isRaceLevel)
         {
-            gameEnded = true;
+            // 🏁 LÓGICA DE CARRERAS: NO declarar victoria automáticamente
+            // En carreras, la victoria se maneja por:
+            // 1. Llegada a la meta (trigger externo)
+            // 2. Fin del tiempo límite
+            // 3. El GameManager solo trackea jugadores activos
             
-            if (activePlayers.Count == 1)
+            if (enableDebugLogs && activePlayers.Count <= 1)
             {
-                // Hay un ganador por eliminación
-                GameObject winner = activePlayers[0];
-                if (enableDebugLogs)
-                    Debug.Log($"🔵 GameManager: ¡{winner.name} es el último en pie!");
-                
-                ShowLastPlayerStandingWinner(winner);
+                Debug.Log($"🏁 GameManager [CARRERA]: {activePlayers.Count} jugadores activos - NO declarando victoria automática");
+                Debug.Log("🏁 Victoria se determina por llegada a meta o tiempo límite");
             }
-            else
+            
+            // NO hacer nada - dejar que UIManager o CarreraManager manejen la victoria
+            return;
+        }
+        else if (isHexagoniaLevel)
+        {
+            // 🔵 LÓGICA DE HEXAGONIA: Último en pie O tiempo agotado
+            if (activePlayers.Count <= 1 && !gameEnded)
             {
-                // Empate (todos eliminados)
-                if (enableDebugLogs)
-                    Debug.Log($"GameManager: ¡Empate! Todos los jugadores fueron eliminados");
+                gameEnded = true;
                 
-                ShowDraw();
+                if (activePlayers.Count == 1)
+                {
+                    GameObject winner = activePlayers[0];
+                    if (enableDebugLogs)
+                        Debug.Log($"🔵 GameManager [HEXAGONIA]: ¡{winner.name} es el último en pie!");
+                    
+                    ShowLastPlayerStandingWinner(winner);
+                }
+                else
+                {
+                    if (enableDebugLogs)
+                        Debug.Log($"🔵 GameManager [HEXAGONIA]: ¡Empate! Todos eliminados");
+                    
+                    ShowDraw();
+                }
             }
         }
-        
-        // ✅ Para niveles NO-Hexagonia: La condición de arriba es suficiente
-        // ✅ Para Hexagonia: La condición de tiempo se maneja en UpdateHexagoniaTimer()
+        else
+        {
+            // 🎮 LÓGICA ESTÁNDAR: Último en pie
+            if (activePlayers.Count <= 1 && !gameEnded)
+            {
+                gameEnded = true;
+                
+                if (activePlayers.Count == 1)
+                {
+                    GameObject winner = activePlayers[0];
+                    if (enableDebugLogs)
+                        Debug.Log($"🎮 GameManager [ESTÁNDAR]: ¡{winner.name} es el último en pie!");
+                    
+                    ShowLastPlayerStandingWinner(winner);
+                }
+                else
+                {
+                    if (enableDebugLogs)
+                        Debug.Log($"🎮 GameManager [ESTÁNDAR]: ¡Empate! Todos eliminados");
+                    
+                    ShowDraw();
+                }
+            }
+        }
     }
     
     private void ShowLastPlayerStandingWinner(GameObject winner)
@@ -430,6 +513,12 @@ public class GameManager : MonoBehaviour
     
     public void ForceEliminatePlayer(GameObject player)
     {
+        if (isHexagoniaLevel && hexagoniaManager != null)
+        {
+            hexagoniaManager.OnPlayerDeath(player);
+            return;
+        }
+        
         if (player != null && activePlayers.Contains(player))
         {
             EliminatePlayer(player);
@@ -438,6 +527,10 @@ public class GameManager : MonoBehaviour
     
     public int GetActivePlayerCount()
     {
+        if (isHexagoniaLevel && hexagoniaManager != null)
+        {
+            return hexagoniaManager.GetPlayersAlive();
+        }
         return activePlayers.Count;
     }
     
@@ -456,6 +549,10 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public float GetHexagoniaTimeRemaining()
     {
+        if (isHexagoniaLevel && hexagoniaManager != null)
+        {
+            return hexagoniaManager.GetTimeRemaining();
+        }
         return hexagoniaTimeRemaining;
     }
     
@@ -464,13 +561,132 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public bool IsHexagoniaTimerActive()
     {
+        if (isHexagoniaLevel && hexagoniaManager != null)
+        {
+            return hexagoniaManager.IsGameRunning();
+        }
         return isHexagoniaLevel && hexagoniaTimerStarted;
+    }
+    
+    /// <summary>
+    /// 🏁 Forzar victoria en carrera (llamado externamente por llegada a meta)
+    /// </summary>
+    public void ForceRaceVictory(GameObject winner = null)
+    {
+        if (gameEnded) return;
+        
+        string currentScene = SceneManager.GetActiveScene().name;
+        bool isRaceLevel = (currentScene == "Carrera" || currentScene == "InGame");
+        
+        if (!isRaceLevel)
+        {
+            Debug.LogWarning("⚠️ ForceRaceVictory llamado en escena que no es carrera");
+            return;
+        }
+        
+        gameEnded = true;
+        
+        if (winner != null)
+        {
+            if (enableDebugLogs)
+                Debug.Log($"🏁 GameManager [CARRERA]: ¡{winner.name} llegó a la meta!");
+        }
+        else
+        {
+            if (enableDebugLogs)
+                Debug.Log($"🏁 GameManager [CARRERA]: Victoria forzada (tiempo agotado)");
+        }
+        
+        // NO deshabilitar el jugador - dejar que UIManager maneje la transición
+    }
+    
+    /// <summary>
+    /// 🏁 Verificar si estamos en un nivel de carrera
+    /// </summary>
+    public bool IsRaceLevel()
+    {
+        string currentScene = SceneManager.GetActiveScene().name;
+        return (currentScene == "Carrera" || currentScene == "InGame");
+    }
+    
+    /// <summary>
+    /// 🎮 Eliminar un jugador del juego
+    /// </summary>
+    public void PlayerEliminated(GameObject player)
+    {
+        if (player == null || gameEnded) return;
+
+        // Remover de jugadores activos y agregar a eliminados
+        if (activePlayers.Contains(player))
+        {
+            activePlayers.Remove(player);
+            eliminatedPlayers.Add(player);
+            
+            if (enableDebugLogs)
+                Debug.Log($"👻 Jugador eliminado: {player.name} - Quedan: {activePlayers.Count}");
+
+            // Actualizar UI
+            UpdateUI();
+
+            // Verificar condición de victoria
+            CheckWinCondition();
+        }
+    }
+
+    private void GameOver(GameObject winner)
+    {
+        gameEnded = true;
+
+        // Mostrar panel de victoria si existe
+        if (winPanel != null)
+        {
+            winPanel.SetActive(true);
+            
+            if (winnerText != null)
+            {
+                if (winner != null)
+                {
+                    string winnerName = winner.name;
+                    PhotonView pv = winner.GetComponent<PhotonView>();
+                    if (pv != null)
+                    {
+                        winnerName = pv.Owner.NickName;
+                    }
+                    winnerText.text = $"¡{winnerName} ha ganado!";
+                }
+                else
+                {
+                    winnerText.text = "¡Todos han sido eliminados!";
+                }
+            }
+        }
+
+        // Logging
+        if (enableDebugLogs)
+        {
+            if (winner != null)
+                Debug.Log($"🏆 Juego terminado - Ganador: {winner.name}");
+            else
+                Debug.Log("💀 Juego terminado - Todos eliminados");
+        }
+
+        // Volver al lobby después de 5 segundos
+        StartCoroutine(ReturnToLobbyAfterDelay(5f));
+    }
+
+    private IEnumerator ReturnToLobbyAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        SceneManager.LoadScene("Lobby");
     }
     
     private void OnGUI()
     {
         if (enableDebugLogs && !gameEnded)
         {
+            string currentScene = SceneManager.GetActiveScene().name;
+            bool isRaceLevel = IsRaceLevel();
+            
             if (isHexagoniaLevel)
             {
                 GUI.Box(new Rect(10, 10, 300, 120), "");
@@ -480,13 +696,59 @@ public class GameManager : MonoBehaviour
                 GUI.Label(new Rect(15, 75, 290, 20), $"Timer activo: {hexagoniaTimerStarted}");
                 GUI.Label(new Rect(15, 95, 290, 20), $"Condición: Último en pie O 3 minutos");
             }
+            else if (isRaceLevel)
+            {
+                GUI.Box(new Rect(10, 10, 280, 100), "");
+                GUI.Label(new Rect(15, 15, 270, 20), $"🏁 CARRERA GameManager");
+                GUI.Label(new Rect(15, 35, 270, 20), $"Escena: {currentScene}");
+                GUI.Label(new Rect(15, 55, 270, 20), $"Jugadores activos: {activePlayers.Count}");
+                GUI.Label(new Rect(15, 75, 270, 20), $"Condición: Llegada a meta o tiempo");
+            }
             else
             {
                 GUI.Box(new Rect(10, 10, 250, 80), "");
-                GUI.Label(new Rect(15, 15, 240, 20), $"GameManager");
+                GUI.Label(new Rect(15, 15, 240, 20), $"🎮 ESTÁNDAR GameManager");
                 GUI.Label(new Rect(15, 35, 240, 20), $"Jugadores: {activePlayers.Count}");
                 GUI.Label(new Rect(15, 55, 240, 20), $"Juego activo: {!gameEnded}");
             }
+        }
+    }
+
+    /// <summary>
+    /// 🎯 Configurar los RealDestPos de la escena
+    /// </summary>
+    private void SetupRealDestPos()
+    {
+        // Buscar todos los RealDestPos en la escena
+        GameObject[] realDestPosObjects = GameObject.FindGameObjectsWithTag("RealDestPos");
+        
+        if (realDestPosObjects.Length == 0)
+        {
+            if (enableDebugLogs)
+                Debug.Log("🎯 GameManager: No se encontraron RealDestPos en la escena");
+            return;
+        }
+
+        foreach (GameObject destPos in realDestPosObjects)
+        {
+            // Asegurarse de que tenga el script RealDestPosTrigger
+            RealDestPosTrigger trigger = destPos.GetComponent<RealDestPosTrigger>();
+            if (trigger == null)
+            {
+                trigger = destPos.AddComponent<RealDestPosTrigger>();
+                if (enableDebugLogs)
+                    Debug.Log($"🎯 GameManager: Añadido RealDestPosTrigger a {destPos.name}");
+            }
+
+            // Configurar el trigger según el tipo de nivel
+            string currentScene = SceneManager.GetActiveScene().name;
+            bool isRaceLevel = (currentScene == "Carrera" || currentScene == "InGame");
+
+            trigger.isFinishLine = isRaceLevel; // Solo es línea de meta en niveles de carrera
+            trigger.enableDebugLogs = this.enableDebugLogs;
+
+            if (enableDebugLogs)
+                Debug.Log($"🎯 GameManager: Configurado {destPos.name} como {(isRaceLevel ? "meta" : "checkpoint")}");
         }
     }
 } 

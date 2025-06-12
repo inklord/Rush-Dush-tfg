@@ -31,7 +31,7 @@ public class AirLiftZone : MonoBehaviour
     private bool isPlayerInside = false;
     private LHS_MainPlayer playerController;
     private Rigidbody playerRb;
-    private Animator playerAnimator;
+    // private Animator playerAnimator; // YA NO NECESARIO - animaciones eliminadas
     private float originalGravity;
     private float originalDrag;
     
@@ -66,7 +66,7 @@ public class AirLiftZone : MonoBehaviour
             isPlayerInside = true;
             playerController = other.GetComponent<LHS_MainPlayer>();
             playerRb = other.GetComponent<Rigidbody>();
-            playerAnimator = other.GetComponent<Animator>();
+            // playerAnimator = other.GetComponent<Animator>(); // YA NO NECESARIO
             
             if (playerRb != null)
             {
@@ -82,11 +82,11 @@ public class AirLiftZone : MonoBehaviour
             // Activar efectos
             StartCoroutine(ActivateEffects(true));
             
-            // Activar animación de vuelo
-            if (playerAnimator != null)
-            {
-                playerAnimator.SetBool("IsFlying", true);
-            }
+            // Animación de vuelo eliminada del proyecto
+            // if (playerAnimator != null)
+            // {
+            //     playerAnimator.SetBool("IsFlying", true);
+            // }
         }
     }
     
@@ -106,11 +106,11 @@ public class AirLiftZone : MonoBehaviour
             // Desactivar efectos
             StartCoroutine(ActivateEffects(false));
             
-            // Desactivar animación de vuelo
-            if (playerAnimator != null)
-            {
-                playerAnimator.SetBool("IsFlying", false);
-            }
+            // Animación de vuelo eliminada del proyecto
+            // if (playerAnimator != null)
+            // {
+            //     playerAnimator.SetBool("IsFlying", false);
+            // }
         }
     }
     

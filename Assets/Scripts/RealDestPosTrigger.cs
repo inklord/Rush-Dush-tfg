@@ -12,6 +12,7 @@ public class RealDestPosTrigger : MonoBehaviour
     public bool enableDebugLogs = true;        // Habilitar logs de debug
     
     private bool playerHasFinished = false;    // Si el jugador ya llegó a la meta
+    private UIManager uiManager;               // Referencia al UIManager
     
     private void Start()
     {
@@ -19,7 +20,15 @@ public class RealDestPosTrigger : MonoBehaviour
         Collider col = GetComponent<Collider>();
         if (col != null && !col.isTrigger)
         {
-            Debug.LogWarning($"⚠️ RealDestPosTrigger: {gameObject.name} debería tener isTrigger = true para detectar llegada del jugador");
+            Debug.LogWarning($"⚠️ RealDestPosTrigger: {gameObject.name} - Configurando collider como trigger");
+            col.isTrigger = true;
+        }
+        
+        // Buscar el UIManager
+        uiManager = FindObjectOfType<UIManager>();
+        if (uiManager == null)
+        {
+            Debug.LogError("❌ RealDestPosTrigger: No se encontró el UIManager");
         }
         
         if (enableDebugLogs)
@@ -30,33 +39,29 @@ public class RealDestPosTrigger : MonoBehaviour
     
     private void OnTriggerEnter(Collider other)
     {
-        // Verificar si es el jugador y si no ha terminado ya
+        if (enableDebugLogs)
+        {
+            Debug.Log($"🎯 Trigger Enter: {other.gameObject.name} (Tag: {other.tag})");
+        }
+        
+        // Solo procesar si es el jugador y no ha terminado aún
         if (other.CompareTag(playerTag) && !playerHasFinished && isFinishLine)
         {
             playerHasFinished = true;
             
             if (enableDebugLogs)
             {
-                Debug.Log($"🏁 ¡Jugador ha llegado a la meta! Posición: {other.transform.position}");
+                Debug.Log($"🎯 Jugador clasificado: {other.gameObject.name}");
             }
             
-            // 🚫 Desactivar movimiento del jugador
-            DisablePlayerMovement(other.gameObject);
-            
-            // Buscar el UIManager y activar clasificado (pero sin transición inmediata)
-            UIManager uiManager = FindObjectOfType<UIManager>();
+            // Notificar al UIManager
             if (uiManager != null)
             {
                 uiManager.ShowClassifiedImmediate();
-                
-                if (enableDebugLogs)
-                {
-                    Debug.Log("🟡 Mostrando CLASIFICADO - esperando countdown para transición");
-                }
             }
             else
             {
-                Debug.LogError("❌ No se encontró UIManager para mostrar clasificado");
+                Debug.LogError("❌ RealDestPosTrigger: No se puede notificar al UIManager (null)");
             }
         }
     }
@@ -71,6 +76,17 @@ public class RealDestPosTrigger : MonoBehaviour
             if (enableDebugLogs)
             {
                 Debug.Log($"🏁 ¡Jugador ha llegado a la meta! (Collision) Posición: {collision.transform.position}");
+            }
+            
+            // 🎯 Notificar al GameManager que la carrera terminó
+            GameManager gameManager = GameManager.Instance;
+            if (gameManager != null && gameManager.IsRaceLevel())
+            {
+                gameManager.ForceRaceVictory(collision.gameObject);
+                if (enableDebugLogs)
+                {
+                    Debug.Log("🏁 GameManager notificado de la victoria en carrera (Collision)");
+                }
             }
             
             // 🚫 Desactivar movimiento del jugador

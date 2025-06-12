@@ -13,7 +13,7 @@ public class MasterSpawnController : MonoBehaviourPunCallbacks
     [Header("🎮 Master Spawn Settings")]
     public string playerPrefabName = "NetworkPlayer";
     public bool preventDuplicateSpawns = true;
-    public bool showDebugInfo = true;
+    public bool showDebugInfo = false;
     
     // Estado global del spawn
     private static bool globalHasSpawned = false;
@@ -31,14 +31,14 @@ public class MasterSpawnController : MonoBehaviourPunCallbacks
         {
             instance = this;
             DontDestroyOnLoad(gameObject);
-            Debug.Log("🎯 MasterSpawnController: Singleton creado");
+            if (showDebugInfo) Debug.Log("🎯 MasterSpawnController: Singleton creado");
             
             // Suscribirse al evento de cambio de escena
             SceneManager.sceneLoaded += OnSceneLoaded;
         }
         else
         {
-            Debug.Log("🎯 MasterSpawnController: Destruyendo duplicado");
+            if (showDebugInfo) Debug.Log("🎯 MasterSpawnController: Destruyendo duplicado");
             Destroy(gameObject);
             return;
         }
@@ -46,8 +46,8 @@ public class MasterSpawnController : MonoBehaviourPunCallbacks
     
     void Start()
     {
-        Debug.Log("🎯 === MASTER SPAWN CONTROLLER INICIADO ===");
-        Debug.Log($"Estado global: HasSpawned={globalHasSpawned}, Player={globalPlayerInstance?.name ?? "null"}");
+        if (showDebugInfo) Debug.Log("🎯 === MASTER SPAWN CONTROLLER INICIADO ===");
+        if (showDebugInfo) Debug.Log($"Estado global: HasSpawned={globalHasSpawned}, Player={globalPlayerInstance?.name ?? "null"}");
         
         // Iniciar limpieza automática periódica
         StartCoroutine(PeriodicCleanup());
@@ -95,7 +95,7 @@ public class MasterSpawnController : MonoBehaviourPunCallbacks
             PhotonView pv = player.GetComponent<PhotonView>();
             if (pv != null && pv.IsMine)
             {
-                Debug.LogWarning($"🚫 {requesterName} DENEGADO - Ya existe jugador con PhotonView.IsMine: {player.name}");
+                if (instance != null && instance.showDebugInfo) Debug.LogWarning($"🚫 {requesterName} DENEGADO - Ya existe jugador con PhotonView.IsMine: {player.name}");
                 
                 // Actualizar estado global si no estaba registrado
                 if (!globalHasSpawned || globalPlayerInstance == null)
@@ -110,11 +110,11 @@ public class MasterSpawnController : MonoBehaviourPunCallbacks
         
         if (HasSpawnedPlayer())
         {
-            Debug.LogWarning($"🚫 {requesterName} solicitó spawn, pero ya existe jugador: {globalPlayerInstance.name}");
+            if (instance != null && instance.showDebugInfo) Debug.LogWarning($"🚫 {requesterName} solicitó spawn, pero ya existe jugador: {globalPlayerInstance.name}");
             return false;
         }
         
-        Debug.Log($"✅ {requesterName} puede proceder con el spawn");
+        if (instance != null && instance.showDebugInfo) Debug.Log($"✅ {requesterName} puede proceder con el spawn");
         return true;
     }
     
@@ -449,6 +449,7 @@ public class MasterSpawnController : MonoBehaviourPunCallbacks
         {
             Vector3 spawnPosition = GetSpawnPosition();
             Debug.Log($"🎮 MasterSpawnController spawneando en: {spawnPosition}");
+            Debug.Log("📝 NOTA: LHS_Respawn2 manejará el respawn cuando el jugador caiga");
             
             GameObject player = PhotonNetwork.Instantiate(playerPrefabName, spawnPosition, Quaternion.identity);
             
@@ -494,17 +495,29 @@ public class MasterSpawnController : MonoBehaviourPunCallbacks
             Debug.Log("📷 Cámara configurada via MovimientoCamaraSimple");
         }
         
-        // Método 2: LHS_Camera en Camera.main
+        // Método 2: Eliminar LHS_Camera si existe y asegurar MovimientoCamaraSimple
         Camera mainCamera = Camera.main;
         if (mainCamera != null)
         {
+            // Eliminar LHS_Camera si existe
             LHS_Camera lhsCamera = mainCamera.GetComponent<LHS_Camera>();
-            if (lhsCamera == null)
+            if (lhsCamera != null)
             {
-                lhsCamera = mainCamera.gameObject.AddComponent<LHS_Camera>();
+                if (Application.isPlaying)
+                    Destroy(lhsCamera);
+                else
+                    DestroyImmediate(lhsCamera);
+                Debug.Log("🧹 LHS_Camera eliminado de Camera.main");
             }
-            lhsCamera.player = player;
-            Debug.Log("📷 Cámara configurada via LHS_Camera");
+            
+            // Asegurar MovimientoCamaraSimple
+            MovimientoCamaraSimple cameraSimple = mainCamera.GetComponent<MovimientoCamaraSimple>();
+            if (cameraSimple == null)
+            {
+                cameraSimple = mainCamera.gameObject.AddComponent<MovimientoCamaraSimple>();
+            }
+            cameraSimple.SetPlayer(player.transform);
+            Debug.Log("📷 Cámara configurada via MovimientoCamaraSimple");
         }
         
         // Método 3: Forzar setup en SimplePlayerMovement si existe
@@ -528,6 +541,36 @@ public class MasterSpawnController : MonoBehaviourPunCallbacks
     
     static void BroadcastSpawnCompleted()
     {
+        string currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+        
+        // En modo MULTIJUGADOR, ser mucho menos agresivo con el kill switch
+        if (PhotonNetwork.IsConnected && PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom.PlayerCount > 1)
+        {
+            Debug.Log("🌐 KILL SWITCH SUAVE para MULTIJUGADOR - Permitiendo múltiples spawns");
+            
+            int currentPlayers = PhotonNetwork.CurrentRoom.PlayerCount;
+            
+            // Contar jugadores spawneados realmente
+            GameObject[] spawnedPlayers = GameObject.FindGameObjectsWithTag("Player");
+            Debug.Log($"🌐 Jugadores en sala: {currentPlayers}, Spawneados: {spawnedPlayers.Length}");
+            
+            // Solo activar kill switch si hay al menos tantos jugadores spawneados como en la sala
+            if (spawnedPlayers.Length >= currentPlayers)
+            {
+                if (instance != null)
+                {
+                    instance.StartCoroutine(DelayedMultiplayerKillSwitch());
+                }
+                Debug.Log("🌐 Activando kill switch suave - Todos los jugadores han spawneado");
+            }
+            else
+            {
+                Debug.Log($"🌐 Esperando más spawns - Necesarios: {currentPlayers}, Spawneados: {spawnedPlayers.Length}");
+            }
+            return;
+        }
+        
+        // Kill switch normal para otras escenas
         Debug.Log("🛑 KILL SWITCH ACTIVADO - Desactivando TODOS los spawners");
         
         // Encontrar y DESTRUIR otros spawners
@@ -586,6 +629,68 @@ public class MasterSpawnController : MonoBehaviourPunCallbacks
         }
         
         Debug.Log("🛑 KILL SWITCH COMPLETADO - Todos los spawners neutralizados");
+    }
+    
+    /// <summary>
+    /// 🌐 Kill switch con delay para modo multijugador (más inteligente)
+    /// </summary>
+    static IEnumerator DelayedMultiplayerKillSwitch()
+    {
+        Debug.Log("🌐 Esperando 10 segundos antes del kill switch multijugador...");
+        yield return new WaitForSeconds(10f);
+        
+        // Verificar el estado actual
+        if (!PhotonNetwork.IsConnected || !PhotonNetwork.InRoom)
+        {
+            Debug.Log("🌐 Ya no estamos conectados - Cancelando kill switch");
+            yield break;
+        }
+        
+        int playersInRoom = PhotonNetwork.CurrentRoom.PlayerCount;
+        GameObject[] spawnedPlayers = GameObject.FindGameObjectsWithTag("Player");
+        
+        int localPlayers = 0;
+        int remotePlayers = 0;
+        
+        foreach (GameObject player in spawnedPlayers)
+        {
+            PhotonView pv = player.GetComponent<PhotonView>();
+            if (pv != null)
+            {
+                if (pv.IsMine)
+                    localPlayers++;
+                else
+                    remotePlayers++;
+            }
+        }
+        
+        Debug.Log($"🌐 Estado final - Sala: {playersInRoom}, Spawneados: {spawnedPlayers.Length} (Local: {localPlayers}, Remoto: {remotePlayers})");
+        
+        // Solo activar kill switch si tenemos suficientes jugadores spawneados
+        if (spawnedPlayers.Length >= playersInRoom && spawnedPlayers.Length >= 2)
+        {
+            Debug.Log("🌐 Kill switch multijugador activado - Todos los jugadores spawneados");
+            
+            // Kill switch MUY suave - solo desactivar spawners redundantes
+            SimplePlayerSpawner[] simpleSpawners = FindObjectsOfType<SimplePlayerSpawner>();
+            int disabledCount = 0;
+            
+            foreach (var spawner in simpleSpawners)
+            {
+                if (spawner.gameObject != instance?.gameObject && spawner.enabled)
+                {
+                    spawner.enabled = false;
+                    disabledCount++;
+                    Debug.Log($"🔇 Desactivando SimplePlayerSpawner redundante: {spawner.name}");
+                }
+            }
+            
+            Debug.Log($"🌐 Kill switch completado - {disabledCount} spawners desactivados");
+        }
+        else
+        {
+            Debug.Log($"🌐 Kill switch cancelado - Insuficientes spawns ({spawnedPlayers.Length}/{playersInRoom})");
+        }
     }
     
     #endregion

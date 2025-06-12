@@ -37,6 +37,9 @@ public class LobbyManager : MonoBehaviourPunCallbacks
     public int maxPlayersPerRoom = 20;         // Máximo jugadores por sala
     public string gameVersion = "1.0";         // Versión del juego
     public string[] gameScenes = { "InGame", "Carrera", "Hexagonia" }; // Escenas del juego (sin WaitingUser)
+    public bool showDebugLogs = false;         // Mostrar logs de debug
+    
+
     
     // Variables privadas
     private string defaultPlayerName = "Player";
@@ -62,7 +65,7 @@ public class LobbyManager : MonoBehaviourPunCallbacks
         // Verificar si necesitamos agregar un PhotonView
         if (photonView == null)
         {
-            Debug.LogWarning("⚠️ PhotonView no encontrado - Agregando uno nuevo");
+            if (showDebugLogs) Debug.LogWarning("⚠️ PhotonView no encontrado - Agregando uno nuevo");
             gameObject.AddComponent<PhotonView>();
         }
         
@@ -71,7 +74,7 @@ public class LobbyManager : MonoBehaviourPunCallbacks
         {
             GameObject spawnerObj = new GameObject("MasterSpawnController");
             spawnerObj.AddComponent<MasterSpawnController>();
-            Debug.Log("🎯 MasterSpawnController creado automáticamente");
+            if (showDebugLogs) Debug.Log("🎯 MasterSpawnController creado automáticamente");
         }
     }
     
@@ -87,7 +90,7 @@ public class LobbyManager : MonoBehaviourPunCallbacks
         InitializePhoton();
         UpdateUI();
         
-        Debug.Log("🌐 LobbyManager iniciado");
+        if (showDebugLogs) Debug.Log("🌐 LobbyManager iniciado");
     }
     
     void ValidateGameScenes()
@@ -378,7 +381,12 @@ public class LobbyManager : MonoBehaviourPunCallbacks
             MaxPlayers = maxPlayersPerRoom,
             IsVisible = true,
             IsOpen = true,
-            PublishUserId = true
+            PublishUserId = true,
+            // 🔧 Asegurar que la sala inicie SIN propiedades de escena
+            CustomRoomProperties = new ExitGames.Client.Photon.Hashtable()
+            {
+                { "GameState", "InLobby" }
+            }
         };
         
         Debug.Log($"🏗️ Creando sala: {roomName}");
@@ -491,38 +499,18 @@ public class LobbyManager : MonoBehaviourPunCallbacks
         
         if (PhotonNetwork.IsMasterClient)
         {
-            // Seleccionar escena a cargar (forzando que NO sea WaitingUser)
-            string sceneToLoad = "InGame"; // Default seguro
+            // 🎬 SIEMPRE empezar por Intro para la experiencia completa
+            string sceneToLoad = "Intro";
             
-            if (gameScenes != null && gameScenes.Length > 0)
-            {
-                // Buscar la primera escena que NO sea WaitingUser
-                foreach (string scene in gameScenes)
-                {
-                    if (!string.IsNullOrEmpty(scene) && scene != "WaitingUser")
-                    {
-                        sceneToLoad = scene;
-                        break;
-                    }
-                }
-            }
-            
-            Debug.Log($"🎮 Cargando escena directamente: {sceneToLoad} (Array: [{string.Join(", ", gameScenes)}])");
-            
-            // Validación final de seguridad
-            if (sceneToLoad == "WaitingUser")
-            {
-                sceneToLoad = "InGame";
-                Debug.LogWarning("⚠️ Forzando cambio de WaitingUser a InGame");
-            }
+            Debug.Log($"🎮 Iniciando juego multijugador desde Intro como debe ser");
             
             // Actualizar el estado antes de cargar
             var props = new ExitGames.Client.Photon.Hashtable();
-            props.Add("GameState", "LoadingGame");
+            props.Add("GameState", "StartingGame");
             props.Add("TargetScene", sceneToLoad);
             PhotonNetwork.CurrentRoom.SetCustomProperties(props);
             
-            // Cargar la escena del juego directamente - PUN2 sincroniza automáticamente
+            // Cargar la escena del juego - PUN2 sincroniza automáticamente
             PhotonNetwork.LoadLevel(sceneToLoad);
         }
         else
@@ -751,6 +739,18 @@ public class LobbyManager : MonoBehaviourPunCallbacks
         currentState = LobbyState.InRoom;
         ShowStatus($"🏠 En sala: {PhotonNetwork.CurrentRoom.Name}", Color.cyan);
         
+        // 🔧 IMPORTANTE: Limpiar propiedades de escena para evitar auto-sync no deseado
+        // Solo el MasterClient puede hacer esto
+        if (PhotonNetwork.IsMasterClient)
+        {
+            // Limpiar cualquier propiedad de escena que pueda estar configurada
+            var cleanProps = new ExitGames.Client.Photon.Hashtable();
+            cleanProps.Add("curScn", null); // Propiedad interna de Photon para escena actual
+            cleanProps.Add("GameState", "InLobby"); // Estado del juego
+            PhotonNetwork.CurrentRoom.SetCustomProperties(cleanProps);
+            Debug.Log("🧹 Propiedades de escena limpiadas - Los jugadores permanecerán en lobby");
+        }
+        
         UpdateUI();
     }
     
@@ -816,6 +816,15 @@ public class LobbyManager : MonoBehaviourPunCallbacks
     {
         Debug.Log($"👤 Jugador se unió: {newPlayer.NickName}");
         ShowStatus($"👤 {newPlayer.NickName} se unió", Color.green);
+        
+        // 🔧 Asegurar que el estado permanezca en lobby cuando se une alguien
+        if (PhotonNetwork.IsMasterClient)
+        {
+            var lobbyProps = new ExitGames.Client.Photon.Hashtable();
+            lobbyProps.Add("GameState", "InLobby");
+            PhotonNetwork.CurrentRoom.SetCustomProperties(lobbyProps);
+            Debug.Log("🧹 Estado forzado a InLobby para evitar auto-sync");
+        }
         
         UpdateUI();
     }
